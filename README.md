@@ -8,6 +8,7 @@
   - [Importing and exporting components](#importing-and-exporting-components)
     - [Barrel exports](#barrel-exports)
     - [Default export vs named export](#default-export-vs-named-export)
+  - [Writing markup with JSX](#writing-markup-with-jsx)  
 
 ## Fundamentals
 React is a library. It lets you put components together but it **does not prescribe how to do routing and data fetching**. To build an entire React app you should use a full-stack React framework like Next.js or Remix.
@@ -131,6 +132,18 @@ You should almost always favour named exports, default exports have many downsid
 - they break tree shaking as instead of **importing the single function you want to use**  you are forcing webpack
 to import the entire file whatever other dead code it has **leading to bigger bundle sizes**
 - you lose faster/direct access to imports, you lose ES6 module benefits such as tree-shaking
+
+
+### Writing markup with JSX
+JSX is a Javascript extension that allows **creating of DOM trees/nodes using an XML-like syntax.** JSX has been adopted by multiple frameworks. Being a **syntactic sugar**, JSX is generally **transpiled(source-to-source-compiler)** into nested JS functions.
+
+JS expressions can be used inside JSX with curly brackets ``{i === 1 ? 'true': 'false'}``. If-else statements cannot be used inside JSX, but conditional expressions can be used instead.
+
+Code written in JSX requires conversion with a tool such as Babel or TS compiler.
+
+
+
+
 
 
 
