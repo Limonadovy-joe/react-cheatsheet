@@ -8,7 +8,9 @@
   - [Importing and exporting components](#importing-and-exporting-components)
     - [Barrel exports](#barrel-exports)
     - [Default export vs named export](#default-export-vs-named-export)
-  - [Writing markup with JSX](#writing-markup-with-jsx)  
+  - [Writing markup with JSX](#writing-markup-with-jsx)
+    - [The rules of JSX](#the-rules-of-jsx)
+  - [JS in JSX with Curly Braces](#js-in-jsx-with-curly-braces)
 
 ## Fundamentals
 React is a library. It lets you put components together but it **does not prescribe how to do routing and data fetching**. To build an entire React app you should use a full-stack React framework like Next.js or Remix.
@@ -140,6 +142,44 @@ JSX is a Javascript extension that allows **creating of DOM trees/nodes using an
 JS expressions can be used inside JSX with curly brackets ``{i === 1 ? 'true': 'false'}``. If-else statements cannot be used inside JSX, but conditional expressions can be used instead.
 
 Code written in JSX requires conversion with a tool such as Babel or TS compiler.
+
+JSX tags map to calls `React.CreateElement()`.
+
+Use lowercase tags <input /> when you need a DOM elems and Capitalized tags for components <Input />.
+
+JSX is very **minimal as a templating languange** because it lets you organize data and logic using JS.
+
+#### The rules of JSX
+
+1. **Return a single root element**</br>
+To return multiple elements from a component, wrap them with a **single parent tag**: `div` or `React.Fragment`.</br>
+Fragments let you group things without leaving any trace in the browser HTML tree.
+
+2. **Close all the tags**</br>
+JSX requires to be explicitly closed: self-closing tags like `<img>` must become `<img/>`.
+
+3. **camelCase most of the things**</br>
+**JSX turns into JS and attributes written in JSX become keys of JS objects.**
+
+For historical reasons, `aria-*` and `data-*` attributes are written as in HTML with dashes.
+
+### JS in JSX with Curly Braces
+JSX lets you write HTML-like markup inside a JS file, keeping **rendering logic and content, styles in the same place**.
+
+**Any JS expression will work between curly braces, including functions calls.**
+
+The next time you see {{ and }} in JSX, you know thats nothing more than an object inside the JSX curlies.
+
+
+
+
+
+
+
+
+
+
+
 
 
 
