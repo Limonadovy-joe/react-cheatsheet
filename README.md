@@ -11,6 +11,8 @@
   - [Writing markup with JSX](#writing-markup-with-jsx)
     - [The rules of JSX](#the-rules-of-jsx)
   - [JS in JSX with Curly Braces](#js-in-jsx-with-curly-braces)
+  - [Passing Props to a Component](#passing-props-to-a-component)
+    - [Forwarding props with the JSX spread syntax](#forwarding-props-with-the-jsx-spread-syntax )
 
 ## Fundamentals
 React is a library. It lets you put components together but it **does not prescribe how to do routing and data fetching**. To build an entire React app you should use a full-stack React framework like Next.js or Remix.
@@ -169,6 +171,32 @@ JSX lets you write HTML-like markup inside a JS file, keeping **rendering logic 
 **Any JS expression will work between curly braces, including functions calls.**
 
 The next time you see {{ and }} in JSX, you know thats nothing more than an object inside the JSX curlies.
+
+### Passing Props to a Component
+React components use **props** to communicate with each other. Every parent component **can pass some information to is child components by givin them props**.
+
+Props are the information you pass to a JSX tag. 
+
+**Props let you think about parent and child components independently**.
+
+#### Forwarding props with the JSX spread syntax
+There is nothing wrong with repetetive code - it can be more legible/readable. But at times you may value conciseness. **Some components forward all of their props to their children. Like how this `Profile` does with `Avatar`**.
+
+```tsx
+function Profile(props) {
+  return (
+    <div className="card">
+      <Avatar {...props} />
+    </div>
+  );
+}
+```
+**Use spread syntax with restraint.** If you are using it in every other component, something is wrong. Often, it indicates that **you should split your components and pass children as JSX.** 
+
+
+
+
+
 
 
 
