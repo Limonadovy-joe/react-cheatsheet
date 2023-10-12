@@ -12,7 +12,9 @@
     - [The rules of JSX](#the-rules-of-jsx)
   - [JS in JSX with Curly Braces](#js-in-jsx-with-curly-braces)
   - [Passing Props to a Component](#passing-props-to-a-component)
-    - [Forwarding props with the JSX spread syntax](#forwarding-props-with-the-jsx-spread-syntax )
+    - [Forwarding props with the JSX spread syntax](#forwarding-props-with-the-jsx-spread-syntax)
+    - [Passing JSX as children](#passing-jsx-as-children)
+    - [Props vs State](#props-vs-state)
 
 ## Fundamentals
 React is a library. It lets you put components together but it **does not prescribe how to do routing and data fetching**. To build an entire React app you should use a full-stack React framework like Next.js or Remix.
@@ -192,6 +194,106 @@ function Profile(props) {
 }
 ```
 **Use spread syntax with restraint.** If you are using it in every other component, something is wrong. Often, it indicates that **you should split your components and pass children as JSX.** 
+
+#### Passing JSX as children
+Sometimes you will want to nest your components. You will see this flexible pattern in many cases.
+```tsx
+<Card>
+  <Avatar />
+</Card>
+```
+You will often use the `children` prop for visual wrappers:
+1. **Layout components: `<Container/>, <Row/>, <Column/>, <Grid/>`**
+2. **Modal components - components that create modal dialogs or pop-up windows:**
+```tsx
+
+type User = {
+  fullName: string;
+  age: number;
+  email: string;
+};
+
+type ButtonMouseEventHandler = (evt: MouseEvent<HTMLButtonElement>) => void;
+
+type ModalProps = {
+  children?: ReactNode;
+  isOpen: boolean;
+  onClose: ButtonMouseEventHandler;
+};
+
+const Modal = ({ children, isOpen, onClose }: ModalProps) => {
+  return !isOpen ? null : (
+    <div className="modal">
+      <div className="modal-content">{children}</div>
+      <button className="modal-close-button" onClick={onClose}></button>
+    </div>
+  );
+};
+
+type UserInfoProps = { user: User };
+
+const UserInfo = ({ user }: UserInfoProps) => (
+  <ul>
+    {Object.keys(user).map((prop) => (
+      <li key={prop}>
+        `${prop}: ${user[prop as keyof User]}`
+      </li>
+    ))}
+  </ul>
+);
+
+const UserProfileContainer = () => {
+  const [isUserModalOpen, setIsUserModalOpen] = useState<boolean>(false);
+  const [user] = useState<User>({
+    age: 12,
+    email: "s@gmail.com",
+    fullName: "tom tom",
+  });
+
+  const handleModalClose: ButtonMouseEventHandler = (evt) =>
+    setIsUserModalOpen((val) => !val);
+
+  return (
+    <div className="user-info">
+      <h3>User Info:</h3>
+      <Modal isOpen={isUserModalOpen} onClose={handleModalClose}>
+        <UserInfo user={user} />
+      </Modal>
+    </div>
+  );
+};
+```
+3. **Higher-order components - HOcs - are functions that accept a component as an argument and return a new component with additional props or behavior. They typically use `children` prop to wrap the input component:**
+```tsx
+TODO
+```
+4. **Wrapper components**
+5. **Render Props components** - components that **accept a function as child** and pass data or behavior to that function.
+
+#### Recap
+- Props reflects a componets data at any point in time
+- Props are **immutable**
+- when a component needs to change its props, **it will have to ask its parrent component to pass it different props**
+- props are **read-only snapshots** in time: every render recevies a new version of props
+- both **props** and **state** changes trigger a render update
+
+<br>
+
+- it is a means of transmitting data
+- **props only work one-way from top to bottom**, however it can receive a callback from parent component through props a then calls it. 
+This **one-way** approach greatly reduces the complexity of applications.
+- `render()` is called when **state or props change** and also its **entire subtree of descendants is re-rendered**
+- all data flows downwards
+
+#### Props vs State
+- the **state of one component often become the props of a child component**
+- What if the child needs to change its `name` prop? This is usually done through **parent callbacks** or **child events**. The parent would then **subscribe to the event by passing a callback handler.**
+```tsx
+<Person name={name} onNameChanged={handleNameChange}/>
+```
+- since the prop is owned by the parent, only the parent should change it
+
+
 
 
 
