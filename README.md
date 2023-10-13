@@ -15,6 +15,9 @@
     - [Forwarding props with the JSX spread syntax](#forwarding-props-with-the-jsx-spread-syntax)
     - [Passing JSX as children](#passing-jsx-as-children)
     - [Props vs State](#props-vs-state)
+  - [Conditional rendering](#conditional-rendering)
+    - [Conditionally returning nothing with null](#conditionally-returning-nothing-with-null)
+    - [Conditionally including JSX](#conditionally-including-jsx)
 
 ## Fundamentals
 React is a library. It lets you put components together but it **does not prescribe how to do routing and data fetching**. To build an entire React app you should use a full-stack React framework like Next.js or Remix.
@@ -292,6 +295,58 @@ This **one-way** approach greatly reduces the complexity of applications.
 <Person name={name} onNameChanged={handleNameChange}/>
 ```
 - since the prop is owned by the parent, only the parent should change it
+
+
+### Conditional rendering
+In React you can create **distinct components that encapsulate behaviour you need**. Then you can render **only some of them, depending on the state of your application.**
+
+#### Conditionally returning nothing with `null`
+In some situations, you wont want to render anything at all. 
+```tsx
+function Item({ name, isPacked }) {
+  if (isPacked) {
+    return null;
+  }
+  return <li className="item">{name}</li>;
+}
+```
+If `isPacked` is true, the component will return `null`, nothing. Otherwise, it will return JSX to render. <br>
+In practise, returning `null` from a component isn`t common because it might suprise a developer trying to render it. More often, you would **conditionally include JSX.**
+
+#### Conditionally including JSX
+You may have already notice some duplication in the render output:
+```tsx
+<li className="item">{name} ✔</li>
+```
+is very similar to
+```tsx
+<li className="item">{name}</li>
+```
+Both of the conditional branches return:
+```tsx
+if (isPacked) {
+  return <li className="item">{name} ✔</li>;
+}
+return <li className="item">{name}</li>;
+```
+While this duplication isnt harmful, it could make your code  **harder to maintain**.</br>
+**What if you want to change the `className`?**
+You would have to do it in two places in your code. In such situation, you could **conditionally include a little JSX** to make your code more **DRY**.
+
+```tsx
+return (
+  <li className="item">
+    {isPacked ? name + ' ✔' : name}
+  </li>
+);
+```
+**If your components get messy with too much nested conditional markup, consider extracting child components to clean up things.**
+
+
+
+
+
+
 
 
 
