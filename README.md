@@ -18,6 +18,8 @@
   - [Conditional rendering](#conditional-rendering)
     - [Conditionally returning nothing with null](#conditionally-returning-nothing-with-null)
     - [Conditionally including JSX](#conditionally-including-jsx)
+- [Anti patterns](#anti-patterns)
+  - [Conditional rendering using short circuit operators](#conditional-rendering-using-short-circuit-operators)
 
 ## Fundamentals
 React is a library. It lets you put components together but it **does not prescribe how to do routing and data fetching**. To build an entire React app you should use a full-stack React framework like Next.js or Remix.
@@ -342,6 +344,51 @@ return (
 ```
 **If your components get messy with too much nested conditional markup, consider extracting child components to clean up things.**
 
+## Anti patterns
+### Conditional rendering using short circuit operators
+In some situations using short circuit operators for conditional rendering **may backfire and you may end up with an unwanted 0 in your UI**. To avoid this default to using ternary operators. The only caveat is that they’re more verbose.
+
+The short-circuit operator reduces the amount of code which is always nice. Ternaries are more verbose but there is no chance to get it wrong. Plus, adding the alternative condition is less of a change.
+```tsx
+// 👎 Try to avoid short-circuit operators
+type User = {
+  id: string;
+  name: string;
+};
+
+type UserListProps = { users: User[] };
+
+const UserList = ({ users }: UserListProps) => {
+  return (
+    <div className="user-list">
+      <ul>
+        {users.length &&
+          users.map(({ id, name }) => <li id={id}>name: {name}</li>)}
+      </ul>
+    </div>
+  );
+};
+
+// 👍 Use a ternary instead
+type User = {
+  id: string;
+  name: string;
+};
+
+type UserListProps = { users: User[] };
+
+const UserList = ({ users }: UserListProps) => {
+  return (
+    <div className="user-list">
+      <ul>
+        {!users.length
+          ? null
+          : users.map(({ id, name }) => <li id={id}>name: {name}</li>)}
+      </ul>
+    </div>
+  );
+};
+```
 
 
 
