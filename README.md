@@ -19,6 +19,12 @@
   - [Conditional rendering](#conditional-rendering)
     - [Conditionally returning nothing with null](#conditionally-returning-nothing-with-null)
     - [Conditionally including JSX](#conditionally-including-jsx)
+  - [Rendering Lists](#rendering-lists)
+    - [Keeping list items in order with key](#keeping-list-items-in-order-with-key)
+    - [Displaying several DOM nodes for each list item](#displaying-several-DOM-nodes-for-each-list-item)
+    - [Where to get your keys](#where-to-get-your-keys)
+    - [Rules of keys](#rules-of-keys)
+    - [Why does React need keys?](#why-does-React-need-keys)
 - [Anti patterns](#anti-patterns)
   - [Conditional rendering using short circuit operators](#conditional-rendering-using-short-circuit-operators)
 
@@ -360,6 +366,39 @@ return (
 );
 ```
 **If your components get messy with too much nested conditional markup, consider extracting child components to clean up things.**
+
+### Rendering Lists
+#### Keeping list items in order with key
+**Keys tell React which array item corresponds to each component**, so that it can match them up later. This becomse important if your **array items can move due to sorting, get inserted, or get deleted.** 
+
+Rather then generating keys **on the fly**, you should include them in your **data model**.
+
+#### Displaying several DOM nodes for each list item
+```tsx
+import { Fragment } from 'react';
+
+const listItems = people.map(person =>
+  <Fragment key={person.id}>
+    <h1>{person.name}</h1>
+    <p>{person.bio}</p>
+  </Fragment>
+);
+```
+Fragments disappear from the DOM, so this will produce a flat list.
+
+#### Where to get your keys
+Different sources of data provide different sources of keys:
+- **Data from database**: If your data come from database, you can use the database keys/IDs, which are unique by nature
+- **Locally generated data**: If your data is generated and persited locally - use `Crypto Web Api` or `UUID` lib
+
+#### Rules of keys
+- **Keys must be unique among siblings**. However, its okay to use **the same keys for JSX nodes in different arrays**
+- **Keys must not change** or that defeats their purpose. Dont generate them while rendering.
+
+
+#### Why does React need keys?
+They let us **uniquely identify an item between its siblings between re-renders**. Even if the position changes **due to reordering**, the `key` lets React identify the item throughout its lifetime.
+
 
 ## Anti patterns
 ### Conditional rendering using short circuit operators
