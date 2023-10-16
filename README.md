@@ -10,6 +10,7 @@
     - [Default export vs named export](#default-export-vs-named-export)
   - [Writing markup with JSX](#writing-markup-with-jsx)
     - [The rules of JSX](#the-rules-of-jsx)
+    - [Booleans, Null, and Undefined Are Ignored](#booleans-null-and-undefined-are-ignored)
   - [JS in JSX with Curly Braces](#js-in-jsx-with-curly-braces)
   - [Passing Props to a Component](#passing-props-to-a-component)
     - [Forwarding props with the JSX spread syntax](#forwarding-props-with-the-jsx-spread-syntax)
@@ -171,6 +172,22 @@ JSX requires to be explicitly closed: self-closing tags like `<img>` must become
 **JSX turns into JS and attributes written in JSX become keys of JS objects.**
 
 For historical reasons, `aria-*` and `data-*` attributes are written as in HTML with dashes.
+
+#### Booleans, Null, and Undefined Are Ignored
+false, null, undefined, and true are valid children. **They simply don’t render**. These JSX expressions will all render to the same thing:
+```tsx
+<div />
+
+<div></div>
+
+<div>{false}</div>
+
+<div>{null}</div>
+
+<div>{undefined}</div>
+
+<div>{true}</div>
+```
 
 ### JS in JSX with Curly Braces
 JSX lets you write HTML-like markup inside a JS file, keeping **rendering logic and content, styles in the same place**.
