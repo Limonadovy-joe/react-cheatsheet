@@ -25,6 +25,10 @@
     - [Where to get your keys](#where-to-get-your-keys)
     - [Rules of keys](#rules-of-keys)
     - [Why does React need keys?](#why-does-React-need-keys)
+  - [Keeping components pure](#keeping-components-pure)
+    - [Side Effects](#side-effects)
+    - [Local mutation](#local-mutation)
+    - [](#)
 - [Anti patterns](#anti-patterns)
   - [Conditional rendering using short circuit operators](#conditional-rendering-using-short-circuit-operators)
 
@@ -398,6 +402,42 @@ Different sources of data provide different sources of keys:
 
 #### Why does React need keys?
 They let us **uniquely identify an item between its siblings between re-renders**. Even if the position changes **due to reordering**, the `key` lets React identify the item throughout its lifetime.
+
+
+## Keeping components pure
+### Side effects
+Reacts rendering process must always be pure. 
+
+**Detecting impure calculations with StrictMode**: In React there are three kinds of inputs that you can read while rendering **`props`, `state` or `context`**.
+You should always treat these inputs as **readonly**.
+
+### Local mutation
+**`Mutation`** - does mutate variables outside of the function scope or objects that were created before the call - that makes them impure.
+
+However, **its completely fine to change variables and objects that you have just created while rendering.** 
+```tsx
+function Cup({ guest }) {
+  return <h2>Tea cup for guest #{guest}</h2>;
+}
+
+export default function TeaGathering() {
+  let cups = [];
+  for (let i = 1; i <= 12; i++) {
+    cups.push(<Cup key={i} guest={i} />);
+  }
+  return cups;
+}
+```
+ This is called **“local mutation”**.
+
+ 
+ 
+
+
+
+
+
+
 
 
 ## Anti patterns
