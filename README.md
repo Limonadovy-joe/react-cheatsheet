@@ -28,7 +28,8 @@
   - [Keeping components pure](#keeping-components-pure)
     - [Side Effects](#side-effects)
     - [Local mutation](#local-mutation)
-    - [](#)
+    - [Where you can cause side effects](#where-you-can-cause-side-effects)
+    - [Why does React care about purity?](#why-does-React-care-about-purity)
 - [Anti patterns](#anti-patterns)
   - [Conditional rendering using short circuit operators](#conditional-rendering-using-short-circuit-operators)
 
@@ -429,6 +430,16 @@ export default function TeaGathering() {
 }
 ```
  This is called **“local mutation”**.
+
+ ### Where you can cause side effects
+ Changes like - updating the screen, starting an animation, changing the data are called **side effects.** 
+
+ In React, **side effects usually belong inside event handlers.** Event handlers **dont run during rendering.** So event handlers **dont need to be pure.**
+
+ ### Why does React care about purity?
+ - Your components could **run in different enviroments** - on the server. (Since they return the same result for the same inputs)
+ - You can improve performance by **skipping rendering components** whose inputs have not changed. This is safe because pure functions always return the same results, so they are safe to cache.
+ 
 
  
  
