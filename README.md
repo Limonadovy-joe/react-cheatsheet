@@ -30,6 +30,9 @@
     - [Local mutation](#local-mutation)
     - [Where you can cause side effects](#where-you-can-cause-side-effects)
     - [Why does React care about purity?](#why-does-React-care-about-purity)
+  - [Your UI as a Tree](#your-ui-as-a-tree)
+    - [The Render Tree](#the-render-tree)
+    - [The module dependency tree](#the-module-dependency-tree) 
 - [Anti patterns](#anti-patterns)
   - [Conditional rendering using short circuit operators](#conditional-rendering-using-short-circuit-operators)
 
@@ -439,6 +442,36 @@ export default function TeaGathering() {
  ### Why does React care about purity?
  - Your components could **run in different enviroments** - on the server. (Since they return the same result for the same inputs)
  - You can improve performance by **skipping rendering components** whose inputs have not changed. This is safe because pure functions always return the same results, so they are safe to cache.
+
+
+ ## Your UI as a Tree
+ Browsers use **tree structures** to model **HTML - DOM** and **CSS - CSSOM**. Mobile platforms also use trees to represent their **view hierarchy**.
+
+### The Render Tree 
+When we render A React app, we can model this relationship in a tree, know as the **render tree.**</br>
+**The CSSOM and DOM trees are combined into a render tree**, which is then used to compute the **layout of each visible element** and **serves as an input to the paint process that renders the pixels to the screen**.
+
+React as a UI framework, **is platform agnostic**. But A React app could just as likely **render to a mobile or desktop platform**, **which may use different UI primitives like UIView or FrameworkElement.**
+
+These trees are generally helpful for **identifying what the top-level and leaf components are in React app**: 
+- **Top-level components** - are the components **nearest to the root component** and affect the rendering performance of all the components benath them and **often contain the most complexity**.
+- **Leaf components** - are **components near the bottom of tree** and **have no child components and are often frequently re-rendered**
+
+### The module dependency tree
+**Dependency tree** for short.
+
+**Each node** in a module dependency tree is a **module** and **each branch** represents an **`import` statement** in that module.
+
+
+
+
+
+
+
+
+
+
+
  
 
  
