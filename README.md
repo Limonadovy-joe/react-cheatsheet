@@ -32,7 +32,15 @@
     - [Why does React care about purity?](#why-does-React-care-about-purity)
   - [Your UI as a Tree](#your-ui-as-a-tree)
     - [The Render Tree](#the-render-tree)
-    - [The module dependency tree](#the-module-dependency-tree) 
+    - [The module dependency tree](#the-module-dependency-tree)
+- [Adding interactivity](#adding-interactivity)
+  - [Responding to Events](#responding-to-events)
+    - [Event propagation](#event-propagation)
+    - [Stopping propagation](#stopping-propagation])
+    - [Naming event handler props](#naming-event-handler-props)
+    - [Capture phase events](#capture-phase-events)
+    - [Passing handlers as alternative to propagation](#passing-handlers-as-alternative-to-propagation)
+    - [Preventing default behavior](#preventing-default-behavior)
 - [Anti patterns](#anti-patterns)
   - [Conditional rendering using short circuit operators](#conditional-rendering-using-short-circuit-operators)
 
@@ -461,6 +469,111 @@ These trees are generally helpful for **identifying what the top-level and leaf 
 **Dependency tree** for short.
 
 **Each node** in a module dependency tree is a **module** and **each branch** represents an **`import` statement** in that module.
+
+## Adding interactivity
+In React, data that changes over time is called **state**. State is a **components specific memory**. 
+
+Components often need to change whats on the screen as a result of interaction.
+
+### Responding to Events
+By convention, it is common to name event handlers as `handle` followed by the element that triggered the event and followed by event name: `handleMouseEnter` || `handleButtonHover`.
+
+If you use **design system**, its common for components like **buttons to contain styling but not specify behavior**. Instead, components like `PlayButton` and 
+`UploadButton` **will pass event handlers down**.
+
+### Naming event handler props
+By convention, event handler props should start with `on`, followed by a capital letter - `onClick`.
+
+When your component supports multiple interactions, you might name event handler props from app-specific concepts - `onPlayMovie` || `onUploadImage`.
+
+Notice how the `App`` component does not need to know what `Toolbar` component will do with `onPlayMovie` or `onUploadImage`. Thats an **implementation detail**
+of `Toolbar`. Here, `Toolbar` passes them down as `onClick` handlers to its `Button`, **but it could later trigger them on keyboard shortcut**.
+
+Naming props after **app-specific interactions like `onPlayMovie`  gives you the flexibility to change how they are used later**.
+
+```tsx
+export default function App() {
+  return (
+    <Toolbar
+      onPlayMovie={() => alert('Playing!')}
+      onUploadImage={() => alert('Uploading!')}
+    />
+  );
+}
+
+function Toolbar({ onPlayMovie, onUploadImage }) {
+  return (
+    <div>
+      <Button onClick={onPlayMovie}>
+        Play Movie
+      </Button>
+      <Button onClick={onUploadImage}>
+        Upload Image
+      </Button>
+    </div>
+  );
+}
+
+function Button({ onClick, children }) {
+  return (
+    <button onClick={onClick}>
+      {children}
+    </button>
+  );
+}
+```
+
+### Event propagation
+Event handlers will also **catch events from any children your component might have**. Event **bubbles** or **propagetes** up the tree.
+
+### Stopping propagation
+Event object also lets you stop the propagation. Calls `e.stopPropagation()`, **preventing the event from bubbling further**.
+
+### Capture phase events
+In rare cases, you might need to catch all events on child elems, **even if they stopped propagation**. 
+
+For example, you want to log every click to analytics, regardless of the propagation logic.
+```tsx
+<div onClickCapture={() => { /* this runs first */ }}>
+  <button onClick={e => e.stopPropagation()} />
+  <button onClick={e => e.stopPropagation()} />
+</div>
+```
+
+### Passing handlers as alternative to propagation
+```tsx
+function Button({ onClick, children }) {
+  return (
+    <button onClick={e => {
+      e.stopPropagation();
+      onClick();
+    }}>
+      {children}
+    </button>
+  );
+}
+```
+It lets the child component handle the event, while also letting the parent component specify some additional behavior. **If you rely on propagation and its difficult to trace which handlers execute and why, try this approach instead**.
+
+### Preventing default behavior 
+Some browser events have default behavior associated with them. You can call `e.preventDefault()` on the event object to stop this from happening.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
