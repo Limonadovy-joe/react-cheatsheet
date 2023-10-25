@@ -43,6 +43,8 @@
     - [Preventing default behavior](#preventing-default-behavior)
 - [Anti patterns](#anti-patterns)
   - [Conditional rendering using short circuit operators](#conditional-rendering-using-short-circuit-operators)
+- [Best practises](#best-practises)
+  - [Organize helper functions](#organize-helper-functions)
 
 ## Fundamentals
 React is a library. It lets you put components together but it **does not prescribe how to do routing and data fetching**. To build an entire React app you should use a full-stack React framework like Next.js or Remix.
@@ -642,6 +644,95 @@ const UserList = ({ users }: UserListProps) => {
   );
 };
 ```
+## Best practises
+### Organize helper functions
+Helper functions that **dont need to hold a closure over the components should be moved outside**. So ideal place is before the component definition so the file can be readable from top to bottom.
+
+That also reduces the noise in the component and leaves inside only those things that need to be there.
+
+```tsx
+// 👎 Avoid nesting functions which don't need to hold a closure.
+function Component({ date }) {
+  function parseDate(rawDate) {
+    ...
+  }
+
+  return <div>Date is {parseDate(date)}</div>
+}
+
+
+function parseDate(date) {
+  ...
+}
+
+// 👍 Place the helper functions after or before the component
+function Component({ date }) {
+  return <div>Date is {parseDate(date)}</div>
+}
+```
+You want to keep the least number of helper functions inside the definition. **Move as many as possible and pass the values from state as arguments**.
+
+Composing your logic out of pure functions that rely only on inputs makes it easier to track bugs and extends.
+```tsx
+// 👎 Helper functions shouldn't read from the component's state
+export default function Component() {
+  const [value, setValue] = useState('')
+
+  function isValid() {
+    // ...
+  }
+
+  return (
+    <>
+      <input
+        value={value}
+        onChange={e => setValue(e.target.value)}
+        onBlur={validateInput}
+      />
+      <button
+        onClick={() => {
+          if (isValid() {
+            // ...
+          }
+        }}
+      >
+        Submit
+      </button>
+    </>
+  )
+}
+
+// 👍 Extract them and pass only the values they need
+export default function Component() {
+  const [value, setValue] = useState('')
+
+  return (
+    <>
+      <input
+        value={value}
+        onChange={e => setValue(e.target.value)}
+        onBlur={validateInput}
+      />
+      <button
+        onClick={() => {
+          if (isValid(value)) {
+            // ...
+          }
+        }}
+      >
+        Submit
+      </button>
+    </>
+  )
+}
+
+function isValid(value) {
+  // ...
+}
+```
+
+
+
 
 
 
