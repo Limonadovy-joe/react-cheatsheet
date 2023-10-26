@@ -41,6 +41,8 @@
     - [Capture phase events](#capture-phase-events)
     - [Passing handlers as alternative to propagation](#passing-handlers-as-alternative-to-propagation)
     - [Preventing default behavior](#preventing-default-behavior)
+  - [State components memory](#state-components-memory)
+    - [How does React know which state to return](#how-does-react-know-which-state-to-return)
 - [Anti patterns](#anti-patterns)
   - [Conditional rendering using short circuit operators](#conditional-rendering-using-short-circuit-operators)
 - [Best practises](#best-practises)
@@ -560,6 +562,20 @@ It lets the child component handle the event, while also letting the parent comp
 ### Preventing default behavior 
 Some browser events have default behavior associated with them. You can call `e.preventDefault()` on the event object to stop this from happening.
 
+## State components memory
+State is isolated and private
+
+**What if you wanted both componets to keep their states in sync?** Remove state from child components and **add it to their closest shared parent.** 
+
+### How does React know which state to return?
+**Hooks rely on a stable call order on every render of the same component.**
+
+Internally, React holds an **array of state pairs for every component**. It also maintains the current pair index, which is set to 0 before rendering. Each time you call useState, **React gives you the next state pair and increments the index.**
+
+
+
+
+
 
 
 
@@ -643,6 +659,8 @@ const UserList = ({ users }: UserListProps) => {
     </div>
   );
 };
+
+
 ```
 ## Best practises
 ### Organize helper functions
