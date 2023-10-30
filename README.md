@@ -45,6 +45,7 @@
     - [How does React know which state to return](#how-does-react-know-which-state-to-return)
   - [Render and Commit](#render-and-commit)
   - [State as a snapshot](#state-as-a-snapshot)
+    - [Setting state triggers renders](#setting-state-triggers-renders)
   - [State components memory](#state-components-memory)
   - [State components memory](#state-components-memory)
 - [Anti patterns](#anti-patterns)
@@ -595,7 +596,19 @@ Process of serving UI has three steps:
   - For **re-render**, React will apply the minimal necessary operatins
   - **React only changes the DOM nodes if there is a difference between re-renders.**
 
-## State a snapshot
+## State as a snapshot
+State behaves more like **a snapshot.**
+
+### Setting state triggers renders 
+- For an UI to react to the event, you need to update the state
+- The JSX you return from the function is **like a snapshot of the UI in time**
+- When React calls your component, it **gives you a snapshot of the state for that particual render**
+- **Setting state only changes it for the next render!**
+- **State variable`s value never changes within a render**, even if its event handler`s code is asynchronous.
+- **React keeps the state values “fixed” within one render’s event handlers.** You dont need to worry about whether the state has changed while the code
+  is running.
+- if you want to read the **latest state before re-render**, you will want to use a **state updater function**
+
 
 
 
