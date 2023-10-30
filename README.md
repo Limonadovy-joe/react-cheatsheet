@@ -43,6 +43,11 @@
     - [Preventing default behavior](#preventing-default-behavior)
   - [State components memory](#state-components-memory)
     - [How does React know which state to return](#how-does-react-know-which-state-to-return)
+  - [State components memory](#state-components-memory)
+    -  
+  - [State components memory](#state-components-memory)
+  - [State components memory](#state-components-memory)
+  - [State components memory](#state-components-memory)
 - [Anti patterns](#anti-patterns)
   - [Conditional rendering using short circuit operators](#conditional-rendering-using-short-circuit-operators)
 - [Best practises](#best-practises)
