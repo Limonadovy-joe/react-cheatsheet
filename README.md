@@ -44,7 +44,7 @@
   - [State components memory](#state-components-memory)
     - [How does React know which state to return](#how-does-react-know-which-state-to-return)
   - [Render and Commit](#render-and-commit)
-  - [State components memory](#state-components-memory)
+  - [State as a snapshot](#state-as-a-snapshot)
   - [State components memory](#state-components-memory)
   - [State components memory](#state-components-memory)
 - [Anti patterns](#anti-patterns)
@@ -594,6 +594,9 @@ Process of serving UI has three steps:
   - For the **initial render**, React will use the `appendChild()` DOM API to put all the DOM nodes it has created on the screen
   - For **re-render**, React will apply the minimal necessary operatins
   - **React only changes the DOM nodes if there is a difference between re-renders.**
+
+## State a snapshot
+
 
 
 
