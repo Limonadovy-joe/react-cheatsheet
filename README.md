@@ -43,8 +43,7 @@
     - [Preventing default behavior](#preventing-default-behavior)
   - [State components memory](#state-components-memory)
     - [How does React know which state to return](#how-does-react-know-which-state-to-return)
-  - [State components memory](#state-components-memory)
-    -  
+  - [Render and Commit](#render-and-commit)
   - [State components memory](#state-components-memory)
   - [State components memory](#state-components-memory)
   - [State components memory](#state-components-memory)
@@ -576,6 +575,31 @@ State is isolated and private
 **Hooks rely on a stable call order on every render of the same component.**
 
 Internally, React holds an **array of state pairs for every component**. It also maintains the current pair index, which is set to 0 before rendering. Each time you call useState, **React gives you the next state pair and increments the index.**
+
+## Render and Commit
+Process of serving UI has three steps:
+1. **Triggering** a render
+  - There are two reasons for a component to render:
+    1. Component`s **initial render**
+    2. The component`s state **has been updated**
+2. **Rendering** a component
+  - After you trigger a render,React calls your componets to figure out what to display on screen,
+    **Rendering** is React calling your components. This process is **recursive**.
+  -  **During the initial render**, React **will create DOM nodes** for markup
+  -  **During a re-render**, React will calculate **which of their properties**, if any, **have changed since the previous render.**
+      It wont do anything with that information until the next step, **the commit phase**.
+3. **Commiting** to a DOM
+  - React commits changes to the DOM
+  - After rendering your components, **React will modify the DOM**.
+  - For the **initial render**, React will use the `appendChild()` DOM API to put all the DOM nodes it has created on the screen
+  - For **re-render**, React will apply the minimal necessary operatins
+  - **React only changes the DOM nodes if there is a difference between re-renders.**
+
+
+
+
+
+
 
 
 
