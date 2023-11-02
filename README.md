@@ -46,8 +46,10 @@
   - [Render and Commit](#render-and-commit)
   - [State as a snapshot](#state-as-a-snapshot)
     - [Setting state triggers renders](#setting-state-triggers-renders)
-  - [State components memory](#state-components-memory)
-  - [State components memory](#state-components-memory)
+  - [Queueing a Series of State Updates](#queueing-a-series-of-state-updates)
+    - [React batches state updates](#react-batches-state-updates)
+    - [What happens if you update state after replacing it](#what-happens-if-you-update-state-after-replacing-it)
+    - [What happens if you replace state after updating it](#what-happens-if-you-replace-state-after-updating-it)
 - [Anti patterns](#anti-patterns)
   - [Conditional rendering using short circuit operators](#conditional-rendering-using-short-circuit-operators)
 - [Best practises](#best-practises)
@@ -608,6 +610,73 @@ State behaves more like **a snapshot.**
 - **React keeps the state values “fixed” within one render’s event handlers.** You dont need to worry about whether the state has changed while the code
   is running.
 - if you want to read the **latest state before re-render**, you will want to use a **state updater function**
+
+## Queueing a Series of State Updates
+Sometimes you want to perform multiple operations on the value queueing the next render.
+
+### React batches state updates
+The UI wont be updated untill after your event handler, and any code in it, completes.
+
+React processes **state updates after event handlers have finished running.** This is called batching.
+
+```tsx
+export default function Counter() {
+  const [number, setNumber] = useState(0);
+
+  return (
+    <>
+      <h1>{number}</h1>
+      <button onClick={() => {
+        setNumber(number + 1);
+        setNumber(number + 1);
+        setNumber(number + 1);
+      }}>+3</button>
+    </>
+  )
+}
+```
+But there is one other factor at play here. **React waits until all code in the event handlers has run before processing your state updated.** This is why the re-render only happens after all these `setNumber()` calls.
+
+This lets you update multiple state variables, even from multiple components, without triggering too many **re-renders.**
+
+### Updating the same state multiple times before the next render 
+You can pass a function that calculates the next state based on the previous one in the queue, like `setNumber(n => n + 1)`. It is a way to tell React to “do something with the state value”.
+
+### What happens if you update state after replacing it
+```tsx
+<button onClick={() => {
+  setNumber(number + 5);
+  setNumber(n => n + 1);
+}}>
+```
+React stores 6 as the final result and returns it from useState.
+
+### What happens if you replace state after updating it 
+``tsx
+import { useState } from 'react';
+
+export default function Counter() {
+  const [number, setNumber] = useState(0);
+
+  return (
+    <>
+      <h1>{number}</h1>
+      <button onClick={() => {
+        setNumber(number + 5);
+        setNumber(n => n + 1);
+        setNumber(42);
+      }}>Increase the number</button>
+    </>
+  )
+}
+```
+React stores 42 as the final result and returns it from useState.
+
+
+
+
+
+
 
 
 
