@@ -50,6 +50,10 @@
     - [React batches state updates](#react-batches-state-updates)
     - [What happens if you update state after replacing it](#what-happens-if-you-update-state-after-replacing-it)
     - [What happens if you replace state after updating it](#what-happens-if-you-replace-state-after-updating-it)
+  - [Updating objects in State](#updating-objects-in-state)
+    - [Updating a nested object](#updating-a-nested-object)
+    - [Write concise update logic with Immer](#write-concise-update-logic-with-immer)
+    - [Why is mutating state not recommended in React](#why-is-mutating-state-not-recommended-in-react)
 - [Anti patterns](#anti-patterns)
   - [Conditional rendering using short circuit operators](#conditional-rendering-using-short-circuit-operators)
 - [Best practises](#best-practises)
@@ -672,6 +676,49 @@ export default function Counter() {
 ```
 
 React stores 42 as the final result and returns it from useState.
+
+
+## Updating objects in State
+When you want to update an object, you need to create the new one and then set the state to use that copy.
+
+- **Treat state as read-only**
+- Mutation is only a problem when you change existing objects that are already in state.
+
+### Updating a nested object
+```tsx
+const [person, setPerson] = useState({
+  name: 'Niki de Saint Phalle',
+  artwork: {
+    title: 'Blue Nana',
+    city: 'Hamburg',
+    image: 'https://i.imgur.com/Sd1AgUOm.jpg',
+  }
+});
+
+setPerson({
+  ...person, // Copy other fields
+  artwork: { // but replace the artwork
+    ...person.artwork, // with the same one
+    city: 'New Delhi' // but in New Delhi!
+  }
+});
+```
+
+### Write concise update logic with Immer
+To reduce repetitive copying code, use Immer.
+
+The draft provided by Immer is a special type of object, called a Proxy, that “records” what you do with it. This is why you can mutate it freely as much as you like!
+
+### Why is mutating state not recommended in React
+- **Debugging**: If you use console.log and don’t mutate state, your past logs won’t get clobbered by the more recent state changes. So you can clearly see how state has changed between renders.
+- **Optimizations**: Common React optimization strategies rely on **skipping work if previous props or state are the same as the next ones**. If you never mutate state, it is very fast to check whether there were any changes. If prevObj === obj, you can be sure that nothing could have changed inside of it.
+- **Requirement Changes**: Some application features, like implementing Undo/Redo, showing a history of changes, or letting the user reset a form to earlier values, are easier to do when nothing is mutated. This is because you can keep past copies of state in memory, and reuse them when appropriate. If you start with a mutative approach, features like this can be difficult to add later on.
+
+
+
+
+
+
 
 
 
