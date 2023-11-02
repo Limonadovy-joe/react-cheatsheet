@@ -652,7 +652,7 @@ You can pass a function that calculates the next state based on the previous one
 React stores 6 as the final result and returns it from useState.
 
 ### What happens if you replace state after updating it 
-``tsx
+```tsx
 import { useState } from 'react';
 
 export default function Counter() {
@@ -670,6 +670,7 @@ export default function Counter() {
   )
 }
 ```
+
 React stores 42 as the final result and returns it from useState.
 
 
