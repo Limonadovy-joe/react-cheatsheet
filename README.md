@@ -54,6 +54,9 @@
     - [Updating a nested object](#updating-a-nested-object)
     - [Write concise update logic with Immer](#write-concise-update-logic-with-immer)
     - [Why is mutating state not recommended in React](#why-is-mutating-state-not-recommended-in-react)
+  - [Updating arrays in State](#updating-arrays-in-state)
+    - [Adding to an array](#adding-to-an-array)
+    - [Replacing items in an array ](#replacing-items-in-an-array) 
 - [Anti patterns](#anti-patterns)
   - [Conditional rendering using short circuit operators](#conditional-rendering-using-short-circuit-operators)
 - [Best practises](#best-practises)
@@ -713,6 +716,64 @@ The draft provided by Immer is a special type of object, called a Proxy, that �
 - **Debugging**: If you use console.log and don’t mutate state, your past logs won’t get clobbered by the more recent state changes. So you can clearly see how state has changed between renders.
 - **Optimizations**: Common React optimization strategies rely on **skipping work if previous props or state are the same as the next ones**. If you never mutate state, it is very fast to check whether there were any changes. If prevObj === obj, you can be sure that nothing could have changed inside of it.
 - **Requirement Changes**: Some application features, like implementing Undo/Redo, showing a history of changes, or letting the user reset a form to earlier values, are easier to do when nothing is mutated. This is because you can keep past copies of state in memory, and reuse them when appropriate. If you start with a mutative approach, features like this can be difficult to add later on.
+
+## Updating arrays in State
+You should treat arrays in React state as **read-only.**
+
+### Adding to an array 
+
+```tsx
+setArtists([
+  { id: nextId++, name: name },
+  ...artists // Put old items at the end
+]);
+```
+In this way, spread can do the job of both push() by adding to the end of an array and unshift() by adding to the beginning of an array.
+
+### Replacing items in an array
+It is particularly common to want to replace one or more items in an array.
+
+```tsx
+
+let initialCounters = [
+  0, 0, 0
+];
+
+export default function CounterList() {
+  const [counters, setCounters] = useState(
+    initialCounters
+  );
+
+  function handleIncrementClick(index) {
+    const nextCounters = counters.map((c, i) => {
+      if (i === index) {
+        // Increment the clicked counter
+        return c + 1;
+      } else {
+        // The rest haven't changed
+        return c;
+      }
+    });
+    setCounters(nextCounters);
+  }
+
+  return (
+    <ul>
+      {counters.map((counter, i) => (
+        <li key={i}>
+          {counter}
+          <button onClick={() => {
+            handleIncrementClick(i);
+          }}>+1</button>
+        </li>
+      ))}
+    </ul>
+  );
+}
+```
+
+
+
 
 
 
