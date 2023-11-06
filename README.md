@@ -56,7 +56,9 @@
     - [Why is mutating state not recommended in React](#why-is-mutating-state-not-recommended-in-react)
   - [Updating arrays in State](#updating-arrays-in-state)
     - [Adding to an array](#adding-to-an-array)
-    - [Replacing items in an array ](#replacing-items-in-an-array) 
+    - [Replacing items in an array ](#replacing-items-in-an-array)
+- [Managing State](#managing-state)
+  - [Reacting to input with state](#reacting-to-input-with-state )
 - [Anti patterns](#anti-patterns)
   - [Conditional rendering using short circuit operators](#conditional-rendering-using-short-circuit-operators)
 - [Best practises](#best-practises)
@@ -771,6 +773,20 @@ export default function CounterList() {
   );
 }
 ```
+
+# Managing State
+
+
+## Reacting to input with state
+React provides **a declarative way to manipulate the UI.** Instead of manipulating **individual pieces of the UI directly**, you describe the different states that your component can be in, and switch between them in response to the user input.
+
+Thinking about UI declaratively.
+
+Expressing **all interactions as state changes** lets you later introduce new visual states without breaking existing ones.  It also lets you change what should be displayed in each state without changing the logic of the interaction itself.
+
+
+
+
 
 
 
