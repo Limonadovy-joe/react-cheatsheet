@@ -60,6 +60,7 @@
 - [Managing State](#managing-state)
   - [Reacting to input with state](#reacting-to-input-with-state)
   - [Choosing the State Structure](#choosing-the-state-structure)
+  - [Sharing State Between Components](#sharing-state-between-components)
 - [Anti patterns](#anti-patterns)
   - [Conditional rendering using short circuit operators](#conditional-rendering-using-short-circuit-operators)
 - [Best practises](#best-practises)
@@ -850,6 +851,65 @@ After normalization:
 Sometimes, you can also reduce state nesting **by moving some of the nested state into the child components.** This works well for ephemeral UI state that doesn’t need to be stored, **like whether an item is hovered.**
 
 For UI patterns like selection, keep ID or index in state instead of the object itself.
+
+## Sharing State Between Components
+
+**lifting state up** - Sometimes, you want the state of two components to always change together. To do it, remove state from both of them, move it to their **closest common parent**, and then pass it down to them via props.
+
+
+1. Remove state from the child components.
+2. Pass hardcoded data from the common parent.
+3. Add state to the common parent and pass it down together with the event handlers.
+
+**Lifting state up often changes the nature of what you’re storing as state:**
+```tsx
+export default function Accordion() {
+  const [activeIndex, setActiveIndex] = useState(0);
+  return (
+    <>
+      <h2>Almaty, Kazakhstan</h2>
+      <Panel
+        title="About"
+        isActive={activeIndex === 0}
+        onShow={() => setActiveIndex(0)}
+      >
+        With a population of about 2 million, Almaty is Kazakhstan's largest city. From 1929 to 1997, it was its capital city.
+      </Panel>
+      <Panel
+        title="Etymology"
+        isActive={activeIndex === 1}
+        onShow={() => setActiveIndex(1)}
+      >
+        The name comes from <span lang="kk-KZ">алма</span>, the Kazakh word for "apple" and is often translated as "full of apples". In fact, the region surrounding Almaty is thought to be the ancestral home of the apple, and the wild <i lang="la">Malus sieversii</i> is considered a likely candidate for the ancestor of the modern domestic apple.
+      </Panel>
+    </>
+  );
+}
+```
+
+Controlled and uncontrolled components:
+It is common to call a component **with some local state “uncontrolled”.** 
+For example, the original Panel component with an isActive state variable is uncontrolled because its **parent cannot influence whether the panel is active or not.**
+
+**In contrast, you might say a component is “controlled” when the important information in it is driven by props rather than its own local state. This lets the parent component fully specify its behavior.**
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
