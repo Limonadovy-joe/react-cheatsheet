@@ -61,6 +61,7 @@
   - [Reacting to input with state](#reacting-to-input-with-state)
   - [Choosing the State Structure](#choosing-the-state-structure)
   - [Sharing State Between Components](#sharing-state-between-components)
+  - [Preserving and Resetting State](#preserving-and-resetting-state)
 - [Anti patterns](#anti-patterns)
   - [Conditional rendering using short circuit operators](#conditional-rendering-using-short-circuit-operators)
 - [Best practises](#best-practises)
@@ -892,6 +893,213 @@ It is common to call a component **with some local state “uncontrolled”.**
 For example, the original Panel component with an isActive state variable is uncontrolled because its **parent cannot influence whether the panel is active or not.**
 
 **In contrast, you might say a component is “controlled” when the important information in it is driven by props rather than its own local state. This lets the parent component fully specify its behavior.**
+
+
+## Preserving and Resetting State
+React keeps track of which state belongs to which component based on their place in the UI tree.
+If it gets removed, or a different component gets rendered at the same position, React discards its state.
+
+**State is tied to a position in the render tree.**
+**React preserves a component’s state for as long as it’s being rendered at its position in the UI tree.**
+
+**Same component at the same position preserves state.**
+```tsx
+
+export default function App() {
+  const [isFancy, setIsFancy] = useState(false);
+  if (isFancy) {
+    return (
+      <div>
+        <Counter isFancy={true} />
+        <label>
+          <input
+            type="checkbox"
+            checked={isFancy}
+            onChange={e => {
+              setIsFancy(e.target.checked)
+            }}
+          />
+          Use fancy styling
+        </label>
+      </div>
+    );
+  }
+  return (
+    <div>
+      <Counter isFancy={false} />
+      <label>
+        <input
+          type="checkbox"
+          checked={isFancy}
+          onChange={e => {
+            setIsFancy(e.target.checked)
+          }}
+        />
+        Use fancy styling
+      </label>
+    </div>
+  );
+}
+```
+
+**Different components at the same position reset state:**
+Also, when you render a different component in the same position, **it resets the state of its entire subtree.** To see how this works, increment the counter and then tick the checkbox:
+
+```tsx
+export default function App() {
+  const [isFancy, setIsFancy] = useState(false);
+  return (
+    <div>
+      {isFancy ? (
+        <div>
+          <Counter isFancy={true} /> 
+        </div>
+      ) : (
+        <section>
+          <Counter isFancy={false} />
+        </section>
+      )}
+      <label>
+        <input
+          type="checkbox"
+          checked={isFancy}
+          onChange={e => {
+            setIsFancy(e.target.checked)
+          }}
+        />
+        Use fancy styling
+      </label>
+    </div>
+  );
+}
+```
+
+**Resetting state at the same position:**
+Option 1: Rendering a component in different positions 
+
+```tsx
+export default function Scoreboard() {
+  const [isPlayerA, setIsPlayerA] = useState(true);
+  return (
+    <div>
+      {isPlayerA &&
+        <Counter person="Taylor" />
+      }
+      {!isPlayerA &&
+        <Counter person="Sarah" />
+      }
+      <button onClick={() => {
+        setIsPlayerA(!isPlayerA);
+      }}>
+        Next player!
+      </button>
+    </div>
+  );
+}
+```
+
+Option 2: Resetting state with a key
+You can use keys to make React distinguish between any components.
+
+```tsx
+export default function Scoreboard() {
+  const [isPlayerA, setIsPlayerA] = useState(true);
+  return (
+    <div>
+      {isPlayerA ? (
+        <Counter key="Taylor" person="Taylor" />
+      ) : (
+        <Counter key="Sarah" person="Sarah" />
+      )}
+      <button onClick={() => {
+        setIsPlayerA(!isPlayerA);
+      }}>
+        Next player!
+      </button>
+    </div>
+  );
+}
+```
+
+**Resetting a form with a key:**
+
+```tsx
+export default function Messenger() {
+  const [to, setTo] = useState(contacts[0]);
+  return (
+    <div>
+      <ContactList
+        contacts={contacts}
+        selectedContact={to}
+        onSelect={contact => setTo(contact)}
+      />
+      <Chat key={to.id} contact={to} />
+    </div>
+  )
+}
+```
+
+**Preserving state for removed components:**
+In a real chat app, you’d probably want to recover the input state when the user selects the previous recipient again. There are a few ways to keep the state “alive” for a component that’s no longer visible:
+
+- You could render all chats instead of just the current one, but hide all the others with CSS. The chats would not get removed from the tree, so their local state would be preserved. This solution works great for simple UIs. **But it can get very slow if the hidden trees are large and contain a lot of DOM nodes.**
+- You could **lift the state up and hold the pending message for each recipient in the parent component.** This way, when the child components get removed, it doesn’t matter, because it’s the parent that keeps the important information. This is the most common solution.
+- You might also use a different source in addition to React state. For example, you probably want a message draft to persist even if the user accidentally closes the page. To implement this, you could have the Chat component initialize its state by reading from the **localStorage**, and save the drafts there too.
+
+**Fix misplaced state in the list:**
+Fix it so that the expanded state is associated with each contact, regardless of the chosen ordering.
+From:
+```tsx
+<ul>
+        {displayedContacts.map((contact, i) =>
+          <li key={i}>
+            <Contact contact={contact} />
+          </li>
+        )}
+      </ul>
+```
+However, **you want the state to be associated with each particular contact.**
+Using the contact ID as a key instead fixes the issue:
+```tsx
+ <ul>
+        {displayedContacts.map(contact =>
+          <li key={contact.id}>
+            <Contact contact={contact} />
+          </li>
+        )}
+      </ul>
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
