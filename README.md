@@ -62,6 +62,7 @@
   - [Choosing the State Structure](#choosing-the-state-structure)
   - [Sharing State Between Components](#sharing-state-between-components)
   - [Preserving and Resetting State](#preserving-and-resetting-state)
+  - [Extracting State Logic into a Reducer](#extracting-state-logic-into-a-reducer)
 - [Anti patterns](#anti-patterns)
   - [Conditional rendering using short circuit operators](#conditional-rendering-using-short-circuit-operators)
 - [Best practises](#best-practises)
@@ -1069,6 +1070,27 @@ Using the contact ID as a key instead fixes the issue:
         )}
       </ul>
 ```
+
+## Extracting State Logic into a Reducer
+Components with many state updates **spread across many event handlers** can get overwhelming. For these cases, you can **consolidate all the state update logic outside your component in a single function**, called a reducer.
+
+Component logic can be easier to read when you **separate concerns like this.** Now the event handlers only specify **what happened by dispatching actions**, and the reducer function determines **how the state updates in response to them.**
+
+As your application grows in size, you’ll most likely deal with **more complex state transitions**, at which point you’ll be better off using useReducer. 
+useReducer provides more **predictable state transitions than useState**, which becomes more important when state changes become so complex that you want to have one place to manage state, like the render function.
+
+useReducer is the better option when you move past managing primitive data, i.e., a string, integer, or Boolean, and **instead must manage a complex object, like with arrays and additional primitives.**
+
+useReducer can help cut down on the code if **many event handlers modify state in a similar way.**
+
+We recommend using a reducer if you often encounter bugs due to incorrect state updates in some component, and want to introduce more structure to its code.
+
+Reducers must be pure. **They should not send requests, schedule timeouts, or perform any side effects - middlewares** (operations that impact things outside the component).
+
+**Each action describes a single user interaction.**
+
+
+
 
 
 
