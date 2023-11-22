@@ -65,6 +65,8 @@
   - [Extracting State Logic into a Reducer](#extracting-state-logic-into-a-reducer)
   - [Passing Data Deeply with Context](#passing-data-deeply-with-context)
   - [Scaling Up with Reducer and Context](#scaling-up-with-reducer-and-context)
+- [Escape Hatches](#escape-hatches)
+  - [Referencing values with refs](#referencing-values-with-refs) 
 - [Anti patterns](#anti-patterns)
   - [Conditional rendering using short circuit operators](#conditional-rendering-using-short-circuit-operators)
 - [Best practises](#best-practises)
@@ -1230,6 +1232,98 @@ function tasksReducer(tasks, action) {
   }
 }
 ```
+
+# Escape Hatches
+Some of your components may need to control and synchronize with systems outside of React. For example, you might need to **focus an input using the browser API, play and pause a video player implemented without React**, or connect and listen to messages from a remote server.
+
+Most of your **application logic and data flow** should not rely on these features.
+
+## Referencing values with refs 
+When you want a component to “remember” some information, but **you don’t want that information to trigger new renders, you can use a ref.**
+
+Unlike state, ref is a plain JavaScript object with the current property that you can read and modify.
+
+When a piece of information **is used for rendering, keep it in state.** When a piece of information is only needed by event handlers and changing it doesn’t require a re-render, using a ref may be more efficient.
+
+**How does useRef work inside?**
+
+```tsx
+// Inside of React
+function useRef(initialValue) {
+  const [ref, unused] = useState({ current: initialValue });
+  return ref;
+}
+```
+React provides a built-in version of useRef because it is common enough in practice. But you can think of it as a regular state variable without a setter. If you’re familiar with object-oriented programming, **refs might remind you of instance fields—but instead of this.something you write somethingRef.current.**
+
+
+**When to use refs:**
+Typically, you will use a ref when your component needs to “step outside” React and communicate with external APIs—often a browser API that won’t impact the appearance of the component.
+
+- **Storing timeout IDs**
+- **Storing and manipulating DOM elements**
+- Storing other objects that aren’t necessary to calculate the JSX.
+
+**Refs and the DOM:**
+However, the most common use case for **a ref is to access a DOM element.** For example, this is handy if you want to **focus an input programmatically.** When you pass a ref to a ref attribute in JSX, like 
+
+```tsx
+<div ref={myRef}>
+```
+React will put the corresponding DOM element into myRef.current. **Once the element is removed from the DOM, React will update myRef.current to be null.**
+
+Don’t read or write ref.current during rendering. This makes your component hard to predict.
+
+Debounced Button
+```tsx
+function DebouncedButton({ onClick, children }) {
+  const timeoutID = useRef(null);
+  
+  return (
+    <button onClick={() => {
+      clearTimeout(timeoutID.current);
+      console.log(timeoutID.current);
+      timeoutID.current = setTimeout(() => {
+        onClick();
+      }, 1000);
+    }}>
+      {children}
+    </button>
+  );
+}
+
+export default function Dashboard() {
+  return (
+    <>
+      <DebouncedButton
+        onClick={() => alert('Spaceship launched!')}
+      >
+        Launch the spaceship
+      </DebouncedButton>
+      <DebouncedButton
+        onClick={() => alert('Soup boiled!')}
+      >
+        Boil the soup
+      </DebouncedButton>
+      <DebouncedButton
+        onClick={() => alert('Lullaby sung!')}
+      >
+        Sing a lullaby
+      </DebouncedButton>
+    </>
+  )
+}
+```
+**A global variable** like timeoutID is shared between all components. This is why clicking on the second button resets the first button’s pending timeout. 
+
+
+
+
+
+
+
+
+
 
 
 
