@@ -64,6 +64,7 @@
   - [Preserving and Resetting State](#preserving-and-resetting-state)
   - [Extracting State Logic into a Reducer](#extracting-state-logic-into-a-reducer)
   - [Passing Data Deeply with Context](#passing-data-deeply-with-context)
+  - [Scaling Up with Reducer and Context](#scaling-up-with-reducer-and-context)
 - [Anti patterns](#anti-patterns)
   - [Conditional rendering using short circuit operators](#conditional-rendering-using-short-circuit-operators)
 - [Best practises](#best-practises)
@@ -1116,6 +1117,125 @@ Each context that you make with createContext() is completely separate from othe
 -  **Current account**: Many components might need to know the currently logged in user. Putting it in context makes it convenient to read it anywhere in the tree. Some apps also let you operate multiple accounts at the same time (e.g. to leave a comment as a different user). In those cases, it can be convenient to wrap a part of the UI into a nested provider with a different current account value.
 -  **Routing**: Most routing solutions use context internally to hold the current route. This is how every link “knows” whether it’s active or not. If you build your own router, you might want to do it too.
 -  **Managing state**: As your app grows, you might end up with a lot of state closer to the top of your app. Many distant components below may want to change it. It is common to use a reducer together with context to manage complex state and pass it down to distant components without too much hassle.
+
+## Scaling Up with Reducer and Context
+Reducers let you consolidate a component’s state update logic. Context lets you pass information deep down to other components.
+
+**A reducer helps keep the event handlers short and concise.**
+
+**Currently, the tasks state and the dispatch function are only available in the top-level TaskApp component.** To let other components read the list of tasks or change it, you have to explicitly **pass down the current state and the event handlers that change it as props.**
+
+```tsx
+<TaskList
+  tasks={tasks}
+  onChangeTask={handleChangeTask}
+  onDeleteTask={handleDeleteTask}
+/>
+```
+
+And TaskList passes the event handlers to Task:
+
+```tsx
+<Task
+  task={task}
+  onChange={onChangeTask}
+  onDelete={onDeleteTask}
+/>
+```
+In a small example like this, this works well, but if you have tens or hundreds of components in the middle, passing down all state and functions can be quite frustrating!
+
+This is why, as an alternative to passing them through props, you might want to put both **the tasks state and the dispatch function into context.** This way, any component below TaskApp in the tree can read the tasks and dispatch actions without the repetitive “prop drilling”.
+
+```tsx
+<TasksContext.Provider value={tasks}>
+  <TasksDispatchContext.Provider value={dispatch}>
+    <h1>Day off in Kyoto</h1>
+    <AddTask />
+    <TaskList />
+  </TasksDispatchContext.Provider>
+</TasksContext.Provider>
+```
+The TaskApp component does not pass any event handlers down, and the TaskList does not pass any event handlers to the Task component either. Each component reads the context that it needs:
+
+```tsx
+export default function TaskList() {
+  const tasks = useContext(TasksContext);
+  return (
+    <ul>
+      {tasks.map(task => (
+        <li key={task.id}>
+          <Task task={task} />
+        </li>
+      ))}
+    </ul>
+  );
+}
+```
+As your app grows, you may have many **context-reducer pairs** like this. This is a powerful way to scale your app and **lift state up** without too much work whenever you want to access the data deep in the tree.
+
+TasksContext.js
+```tsx
+
+const TasksContext = createContext(null);
+
+const TasksDispatchContext = createContext(null);
+
+export function TasksProvider({ children }) {
+  const [tasks, dispatch] = useReducer(
+    tasksReducer,
+    initialTasks
+  );
+
+  return (
+    <TasksContext.Provider value={tasks}>
+      <TasksDispatchContext.Provider value={dispatch}>
+        {children}
+      </TasksDispatchContext.Provider>
+    </TasksContext.Provider>
+  );
+}
+
+export function useTasks() {
+  return useContext(TasksContext);
+}
+
+export function useTasksDispatch() {
+  return useContext(TasksDispatchContext);
+}
+
+function tasksReducer(tasks, action) {
+  switch (action.type) {
+    case 'added': {
+      return [...tasks, {
+        id: action.id,
+        text: action.text,
+        done: false
+      }];
+    }
+    case 'changed': {
+      return tasks.map(t => {
+        if (t.id === action.task.id) {
+          return action.task;
+        } else {
+          return t;
+        }
+      });
+    }
+    case 'deleted': {
+      return tasks.filter(t => t.id !== action.id);
+    }
+    default: {
+      throw Error('Unknown action: ' + action.type);
+    }
+  }
+}
+```
+
+
+
+
+
+
 
 
 
