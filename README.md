@@ -1529,19 +1529,69 @@ Avoid changing DOM nodes managed by React. Modifying, adding children to, or rem
 
 However, this doesn’t mean that you can’t do it at all. It requires caution. **You can safely modify parts of the DOM that React has no reason to update.** For example, if some div is always empty in the JSX, React won’t have a reason to touch its children list. Therefore, it is safe to manually add or remove elements there.
 
+**Challenge:**
+This image carousel has a “Next” button that switches the active image. Make the gallery scroll horizontally to the active image on click. You will want to call scrollIntoView() on the DOM node of the active image..
 
+You can declare a selectedRef, and then pass it conditionally only to the current image:
+```tsx
+<li ref={index === i ? selectedRef : null}>
+```
+When index === i, meaning that the image is the selected one, the li will receive the selectedRef. React will make sure that selectedRef.current always points at the correct DOM node.
 
+Note that the flushSync call is necessary to force React to update the DOM before the scroll. Otherwise, selectedRef.current would always point at the previously selected item.
 
+```tsx
+export default function CatFriends() {
+  const selectedRef = useRef(null);
+  const [index, setIndex] = useState(0);
 
-
-
-
-
-
-
-
-
-
+  return (
+    <>
+      <nav>
+        <button onClick={() => {
+          flushSync(() => {
+            if (index < catList.length - 1) {
+              setIndex(index + 1);
+            } else {
+              setIndex(0);
+            }
+          });
+          selectedRef.current.scrollIntoView({
+            behavior: 'smooth',
+            block: 'nearest',
+            inline: 'center'
+          });            
+        }}>
+          Next
+        </button>
+      </nav>
+      <div>
+        <ul>
+          {catList.map((cat, i) => (
+            <li
+              key={cat.id}
+              ref={index === i ?
+                selectedRef :
+                null
+              }
+            >
+              <img
+                className={
+                  index === i ?
+                    'active'
+                    : ''
+                }
+                src={cat.imageUrl}
+                alt={'Cat #' + cat.id}
+              />
+            </li>
+          ))}
+        </ul>
+      </div>
+    </>
+  );
+}
+```
 
 
 
