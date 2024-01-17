@@ -68,6 +68,7 @@
 - [Escape Hatches](#escape-hatches)
   - [Referencing values with refs](#referencing-values-with-refs)
   - [Manipulating the DOM with Refs](#manipulating-the-dom-with-refs)
+  - [Synchronizing with Effects](#synchronizing-with-effects)
 - [Anti patterns](#anti-patterns)
   - [Conditional rendering using short circuit operators](#conditional-rendering-using-short-circuit-operators)
 - [Best practises](#best-practises)
@@ -1593,11 +1594,78 @@ export default function CatFriends() {
 }
 ```
 
+## Synchronizing with Effects
+Some components need to synchronize with **external systems.**  For example, you might want to control a **non-React component based on the React state**, set up a **server connection**, or **send an analytics log when a component appears on the screen.**
+
+- **Effects let you specify side effects that are caused by rendering itself, rather than by a particular event.**
+- **Setting up a server connection is an Effect** because it should happen no matter which interaction caused the component to appear. **Effects run at the end of a commit after the screen updates**. This is a good time to synchronize the React components with some external system.
+- Every time your component renders, React will update the screen and then run the code inside useEffect. In other words, **useEffect “delays” a piece of code from running until that render is reflected on the screen.**
 
 
+**Why was the ref omitted from the dependency array?**
+```tsx
+function VideoPlayer({ src, isPlaying }) {
+  const ref = useRef(null);
+  useEffect(() => {
+    if (isPlaying) {
+      ref.current.play();
+    } else {
+      ref.current.pause();
+    }
+  }, [isPlaying]);
+```
+- **The set functions returned by useState also have stable identity**, so you will often see them omitted from the dependencies too. If the linter lets you omit a dependency without errors, it is safe to do.
+- **Omitting always-stable dependencies only works when the linter can “see” that the object is stable.** For example, **if ref was passed from a parent component, you would have to specify it in the dependency array.** However, this is good because you can’t know whether the parent component always passes the same ref, or passes one of several refs conditionally. So your Effect would depend on which ref is passed.
 
+**The cleanup function:** </br>
+**The cleanup function should stop or undo whatever the Effect was doing.** The rule of thumb is that the user shouldn’t be able to distinguish between the Effect running once (as in production) and a setup → cleanup → setup sequence (as you’d see in development).
 
+**Most of the Effects you’ll write will fit into one of the common patterns below:**
+- **Controlling non-React widgets**
+  - Sometimes you need to add UI widgets that aren’t written to React. For example, let’s say you’re adding a map component to your page.
+  - Some APIs may not allow you to call them twice in a row. For example, the showModal method of the built-in <dialog> element throws if you call it twice. Implement the cleanup function and make it close the dialog:
+```tsx
+useEffect(() => {
+  const dialog = dialogRef.current;
+  dialog.showModal();
+  return () => dialog.close();
+}, []);
+```
+- **Triggering animations**
+  - If your Effect animates something in, the cleanup function should reset the animation to the initial values
+- **Fetching data**
+  - If your Effect fetches something, the cleanup function should either abort the fetch or ignore its result:
+```tsx
+useEffect(() => {
+  let ignore = false;
 
+  async function startFetching() {
+    const json = await fetchTodos(userId);
+    if (!ignore) {
+      setTodos(json);
+    }
+  }
+
+  startFetching();
+
+  return () => {
+    ignore = true;
+  };
+}, [userId]);
+```
+
+**Not an Effect: Initializing the application:**
+```tsx
+if (typeof window !== 'undefined') { // Check if we're running in the browser.
+  checkAuthToken();
+  loadDataFromLocalStorage();
+}
+
+function App() {
+  // ...
+}
+```
+This guarantees that such logic only runs once after the browser loads the page.
 
 
 
