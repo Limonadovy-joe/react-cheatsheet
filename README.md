@@ -2716,3 +2716,74 @@ As a rule of thumb, **Effect Events should correspond to something that happens 
 On the other hand, **onMount, onUpdate, onUnmount, or onAfterRender are so generic** that it’s easy to accidentally put code that should be reactive into them. This is why you should name your Effect Events after what the user thinks has happened, not when some code happened to run.
 
 
+The Effect that had roomId set to "travel" (so it connected to the "travel" room) will show the notification for "travel". The Effect that had roomId set to "music" (so it connected to the "music" room) will show the notification for "music". In other words, connectedRoomId comes from your Effect (which is reactive), while theme always uses the latest value.
+
+To solve the additional challenge, save the notification timeout ID and clear it in the cleanup function of your Effect:
+```tsx
+import { useState, useEffect } from 'react';
+import { experimental_useEffectEvent as useEffectEvent } from 'react';
+import { createConnection, sendMessage } from './chat.js';
+import { showNotification } from './notifications.js';
+
+const serverUrl = 'https://localhost:1234';
+
+function ChatRoom({ roomId, theme }) {
+  const onConnected = useEffectEvent(connectedRoomId => {
+    showNotification('Welcome to ' + connectedRoomId, theme);
+  });
+
+  useEffect(() => {
+    const connection = createConnection(serverUrl, roomId);
+    let notificationTimeoutId;
+    connection.on('connected', () => {
+      notificationTimeoutId = setTimeout(() => {
+        onConnected(roomId);
+      }, 2000);
+    });
+    connection.connect();
+    return () => {
+      connection.disconnect();
+      if (notificationTimeoutId !== undefined) {
+        console.log('notificationTimeoutId',notificationTimeoutId);
+        clearTimeout(notificationTimeoutId);
+      }
+    };
+  }, [roomId]);
+
+  return <h1>Welcome to the {roomId} room!</h1>
+}
+
+export default function App() {
+  const [roomId, setRoomId] = useState('general');
+  const [isDark, setIsDark] = useState(false);
+  return (
+    <>
+      <label>
+        Choose the chat room:{' '}
+        <select
+          value={roomId}
+          onChange={e => setRoomId(e.target.value)}
+        >
+          <option value="general">general</option>
+          <option value="travel">travel</option>
+          <option value="music">music</option>
+        </select>
+      </label>
+      <label>
+        <input
+          type="checkbox"
+          checked={isDark}
+          onChange={e => setIsDark(e.target.checked)}
+        />
+        Use dark theme
+      </label>
+      <hr />
+      <ChatRoom
+        roomId={roomId}
+        theme={isDark ? 'dark' : 'light'}
+      />
+    </>
+  );
+}
+```
+This ensures that already scheduled (but not yet displayed) notifications get cancelled when you change rooms.
