@@ -71,6 +71,7 @@
   - [Synchronizing with Effects](#synchronizing-with-effects)
   - [You Might Not Need an Effect](#you-might-not-need-an-effect)
   - [Lifecycle of Reactive Effects](#lifecycle-of-reactive-effects)
+  - [Separating Events from Effects](#separating-events-from-effects)
 - [Anti patterns](#anti-patterns)
   - [Conditional rendering using short circuit operators](#conditional-rendering-using-short-circuit-operators)
 - [Best practises](#best-practises)
@@ -2498,6 +2499,217 @@ In other words, Effects “react” to all values from the component body.
 **You can’t “choose” your dependencies. Your dependencies must include every reactive value you read in the Effect.**
 
 **Avoid relying on objects and functions as dependencies. If you create objects and functions during rendering and then read them from an Effect, they will be different on every render. This will cause your Effect to re-synchronize every time.**
+
+## Separating Events from Effects
+- Event handlers only re-run when you perform the **same interaction again.**
+- Unlike event handlers, **Effects re-synchronize if some value they read, like a prop or a state variable, is different from what it was during the last render.**
+- Sometimes, **you also want a mix of both behaviors:** an Effect that re-runs in response to some values but not others.
+
+**Choosing between event handlers and Effects:**</br>
+- Event handlers run in response to specific interactions.
+- Effects run whenever synchronization is needed. **Props, state, and variables declared inside your component’s body are called reactive values.** In this example, serverUrl is not a reactive value, but roomId and message are. They participate in the rendering data flow:
+```tsx
+const serverUrl = 'https://localhost:1234';
+
+function ChatRoom({ roomId }) {
+  const [message, setMessage] = useState('');
+
+  // ...
+}
+```
+**Reactive values** like these can change due to a re-render.
+
+**Extracting non-reactive logic out of Effects:**</br>
+Things get more tricky when you want to mix reactive logic with non-reactive logic.
+
+For example, imagine that you want to show a notification when the user connects to the chat. You read the current theme (dark or light) from the props so that you can show the notification in the correct color.
+
+However, theme is a reactive value (it can change as a result of re-rendering), and every reactive value read by an Effect must be declared as its dependency. Now you have to specify theme as a dependency of your Effect:
+```tsx
+function ChatRoom({ roomId, theme }) {
+  useEffect(() => {
+    const connection = createConnection(serverUrl, roomId);
+    connection.on('connected', () => {
+      showNotification('Connected!', theme);
+    });
+    connection.connect();
+    return () => {
+      connection.disconnect()
+    };
+  }, [roomId, theme]); // ✅ All dependencies declared
+```
+When the roomId changes, the chat re-connects as you would expect. But since theme is also a dependency, the chat also re-connects every time you switch between the dark and the light theme. That’s not great!
+
+In other words, you don’t want this line to be reactive, even though it is inside an Effect (which is reactive):
+```tsx
+      showNotification('Connected!', theme);
+```
+**Declaring an Effect Event:**
+Use a special Hook called useEffectEvent to extract this non-reactive logic out of your Effect:
+```tsx
+import { useEffect, useEffectEvent } from 'react';
+
+function ChatRoom({ roomId, theme }) {
+  const onConnected = useEffectEvent(() => {
+    showNotification('Connected!', theme);
+  });
+  // ...
+```
+**Here, onConnected is called an Effect Event. It’s a part of your Effect logic, but it behaves a lot more like an event handler.** The logic inside it is not reactive, and **it always “sees” the latest values of your props and state.**
+```tsx
+function ChatRoom({ roomId, theme }) {
+  const onConnected = useEffectEvent(() => {
+    showNotification('Connected!', theme);
+  });
+
+  useEffect(() => {
+    const connection = createConnection(serverUrl, roomId);
+    connection.on('connected', () => {
+      onConnected();
+    });
+    connection.connect();
+    return () => connection.disconnect();
+  }, [roomId]); // ✅ All dependencies declared
+  // ...
+```
+This solves the problem. Note that you had to remove onConnected from the list of your Effect’s dependencies. **Effect Events are not reactive and must be omitted from dependencies.**
+
+**You can think of Effect Events as being very similar to event handlers.** The main difference is that **event handlers run in response to a user interactions**, **whereas Effect Events are triggered by you from Effects.** Effect Events let you “break the chain” between the reactivity of Effects and code that should not be reactive.
+
+**Reading latest props and state with Effect Events:**
+Effect Events let you fix many patterns where you might be tempted to suppress the dependency linter.
+
+For example, say you have an Effect to log the page visits:
+```tsx
+function Page() {
+  useEffect(() => {
+    logVisit();
+  }, []);
+  // ...
+}
+```
+Later, you add multiple routes to your site. Now your Page component receives a url prop with the current path. You want to pass the url as a part of your logVisit call, but the dependency linter complains:
+```tsx
+function Page({ url }) {
+  useEffect(() => {
+    logVisit(url);
+  }, []); // 🔴 React Hook useEffect has a missing dependency: 'url'
+  // ...
+}
+```
+Think about what you want the code to do. You want to log a separate visit for different URLs since each URL represents a different page. In other words, this logVisit call should be reactive with respect to the url. This is why, in this case, it makes sense to follow the dependency linter, and add url as a dependency:
+```tsx
+function Page({ url }) {
+  useEffect(() => {
+    logVisit(url);
+  }, [url]); // ✅ All dependencies declared
+  // ...
+}
+```
+Now let’s say you want to include the number of items in the shopping cart together with every page visit:
+```tsx
+function Page({ url }) {
+  const { items } = useContext(ShoppingCartContext);
+  const numberOfItems = items.length;
+
+  useEffect(() => {
+    logVisit(url, numberOfItems);
+  }, [url]); // 🔴 React Hook useEffect has a missing dependency: 'numberOfItems'
+  // ...
+}
+```
+You used numberOfItems inside the Effect, so the linter asks you to add it as a dependency. However, you don’t want the logVisit call to be reactive with respect to numberOfItems. If the user puts something into the shopping cart, and the numberOfItems changes, this does not mean that the user visited the page again. In other words, visiting the page is, in some sense, an “event”. It happens at a precise moment in time.
+
+Split the code in two parts:
+```tsx
+function Page({ url }) {
+  const { items } = useContext(ShoppingCartContext);
+  const numberOfItems = items.length;
+
+  const onVisit = useEffectEvent(visitedUrl => {
+    logVisit(visitedUrl, numberOfItems);
+  });
+
+  useEffect(() => {
+    onVisit(url);
+  }, [url]); // ✅ All dependencies declared
+  // ...
+}
+```
+As a result, you will call logVisit for every change to the url, and always read the latest numberOfItems. However, if numberOfItems changes on its own, this will not cause any of the code to re-run.
+
+This becomes especially important if there is some asynchronous logic inside the Effect:
+```tsx
+  const onVisit = useEffectEvent(visitedUrl => {
+    logVisit(visitedUrl, numberOfItems);
+  });
+
+  useEffect(() => {
+    setTimeout(() => {
+      onVisit(url);
+    }, 5000); // Delay logging visits
+  }, [url]);
+```
+Here, url inside onVisit corresponds to the latest url (which could have already changed), but visitedUrl corresponds to the url that originally caused this Effect (and this onVisit call) to run.
+
+**Limitations of Effect Events:**
+Effect Events are very limited in how you can use them:
+
+- Only call them from inside Effects.
+- Never pass them to other components or Hooks.
+
+For example, don’t declare and pass an Effect Event like this:
+```tsx
+function Timer() {
+  const [count, setCount] = useState(0);
+
+  const onTick = useEffectEvent(() => {
+    setCount(count + 1);
+  });
+
+  useTimer(onTick, 1000); // 🔴 Avoid: Passing Effect Events
+
+  return <h1>{count}</h1>
+}
+
+function useTimer(callback, delay) {
+  useEffect(() => {
+    const id = setInterval(() => {
+      callback();
+    }, delay);
+    return () => {
+      clearInterval(id);
+    };
+  }, [delay, callback]); // Need to specify "callback" in dependencies
+}
+```
+Instead, always declare Effect Events directly next to the Effects that use them:
+```tsx
+function Timer() {
+  const [count, setCount] = useState(0);
+  useTimer(() => {
+    setCount(count + 1);
+  }, 1000);
+  return <h1>{count}</h1>
+}
+
+function useTimer(callback, delay) {
+  const onTick = useEffectEvent(() => {
+    callback();
+  });
+
+  useEffect(() => {
+    const id = setInterval(() => {
+      onTick(); // ✅ Good: Only called locally inside an Effect
+    }, delay);
+    return () => {
+      clearInterval(id);
+    };
+  }, [delay]); // No need to specify "onTick" (an Effect Event) as a dependency
+}
+```
+Effect Events are non-reactive “pieces” of your Effect code. They should be next to the Effect using them.
+
 
 
 
