@@ -2710,6 +2710,9 @@ function useTimer(callback, delay) {
 ```
 Effect Events are non-reactive “pieces” of your Effect code. They should be next to the Effect using them.
 
-
+In general, you should be suspicious of functions like **onMount that focus on the timing rather than the purpose of a piece of code.**
+It may feel “more descriptive” at first but it obscures your intent. 
+As a rule of thumb, **Effect Events should correspond to something that happens from the user’s perspective.** For example, **onMessage, onTick, onVisit, or onConnected are good Effect Event names.** Code inside them would likely not need to be reactive. 
+On the other hand, **onMount, onUpdate, onUnmount, or onAfterRender are so generic** that it’s easy to accidentally put code that should be reactive into them. This is why you should name your Effect Events after what the user thinks has happened, not when some code happened to run.
 
 
