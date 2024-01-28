@@ -72,6 +72,7 @@
   - [You Might Not Need an Effect](#you-might-not-need-an-effect)
   - [Lifecycle of Reactive Effects](#lifecycle-of-reactive-effects)
   - [Separating Events from Effects](#separating-events-from-effects)
+  - [Removing Effect Dependencies](#removing-effect-dependencies)
 - [Anti patterns](#anti-patterns)
   - [Conditional rendering using short circuit operators](#conditional-rendering-using-short-circuit-operators)
 - [Best practises](#best-practises)
@@ -2787,3 +2788,271 @@ export default function App() {
 }
 ```
 This ensures that already scheduled (but not yet displayed) notifications get cancelled when you change rooms.
+
+
+## Removing Effect Dependencies
+- When you write an Effect, **the linter will verify that you’ve included every reactive value **(like props and state) that the Effect reads in the list of your Effect’s dependencies.
+- **Unnecessary dependencies may cause your Effect to run too often, or even create an infinite loop.**
+
+- **Effects “react” to reactive values. Since roomId is a reactive value (it can change due to a re-render),** the linter verifies that you’ve specified it as a dependency.
+- If roomId receives a different value, React will re-synchronize your Effect. This ensures that the chat stays connected to the selected room and “reacts” to the dropdown:
+```tsx
+import { useState, useEffect } from 'react';
+import { createConnection } from './chat.js';
+
+const serverUrl = 'https://localhost:1234';
+
+function ChatRoom({ roomId }) {
+  useEffect(() => {
+    const connection = createConnection(serverUrl, roomId);
+    connection.connect();
+    return () => connection.disconnect();
+  }, [roomId]);
+  return <h1>Welcome to the {roomId} room!</h1>;
+}
+
+export default function App() {
+  const [roomId, setRoomId] = useState('general');
+  return (
+    <>
+      <label>
+        Choose the chat room:{' '}
+        <select
+          value={roomId}
+          onChange={e => setRoomId(e.target.value)}
+        >
+          <option value="general">general</option>
+          <option value="travel">travel</option>
+          <option value="music">music</option>
+        </select>
+      </label>
+      <hr />
+      <ChatRoom roomId={roomId} />
+    </>
+  );
+}
+```
+
+**To remove a dependency, prove that it’s not a dependency:**
+To remove a dependency, “prove” to the linter that it doesn’t need to be a dependency. For example, you can move roomId out of your component to prove that it’s not reactive and won’t change on re-renders:
+```tsx
+const serverUrl = 'https://localhost:1234';
+const roomId = 'music'; // Not a reactive value anymore
+
+function ChatRoom() {
+  useEffect(() => {
+    const connection = createConnection(serverUrl, roomId);
+    connection.connect();
+    return () => connection.disconnect();
+  }, []); // ✅ All dependencies declared
+  // ...
+}
+```
+
+**Removing unnecessary dependencies:**
+Every time you adjust the Effect’s dependencies to reflect the code, look at the dependency list. **Does it make sense for the Effect to re-run when any of these dependencies change? Sometimes, the answer is “no”:**
+- You might want to **re-execute different parts of your Effect under different conditions**
+- You might want to only **read the latest value of some dependency instead of “reacting” to its changes.**
+- A dependency may **change too often unintentionally because it’s an object or a function.**
+
+**Should this code move to an event handler?**
+Imagine a form. On submit, you set the submitted state variable to true. You need to send a POST request and show a notification. You’ve put this logic inside an Effect that “reacts” to submitted being true:
+```tsx
+function Form() {
+  const [submitted, setSubmitted] = useState(false);
+
+  useEffect(() => {
+    if (submitted) {
+      // 🔴 Avoid: Event-specific logic inside an Effect
+      post('/api/register');
+      showNotification('Successfully registered!');
+    }
+  }, [submitted]);
+
+  function handleSubmit() {
+    setSubmitted(true);
+  }
+
+  // ...
+```
+Later, you want to style the notification message according to the current theme, so you read the current theme. Since theme is declared in the component body, it is a reactive value, so you add it as a dependency:
+```tsx
+function Form() {
+  const [submitted, setSubmitted] = useState(false);
+  const theme = useContext(ThemeContext);
+
+  useEffect(() => {
+    if (submitted) {
+      // 🔴 Avoid: Event-specific logic inside an Effect
+      post('/api/register');
+      showNotification('Successfully registered!', theme);
+    }
+  }, [submitted, theme]); // ✅ All dependencies declared
+
+  function handleSubmit() {
+    setSubmitted(true);
+  }  
+
+  // ...
+}
+```
+By doing this, you’ve introduced a bug. Imagine you submit the form first and then switch between Dark and Light themes. The theme will change, the Effect will re-run, and so it will display the same notification again!
+
+he problem here is that this shouldn’t be an Effect in the first place. You want to send this POST request and show the notification in response to submitting the form, which is a particular interaction. To run some code in response to particular interaction, put that logic directly into the corresponding event handler:
+```tsx
+function Form() {
+  const theme = useContext(ThemeContext);
+
+  function handleSubmit() {
+    // ✅ Good: Event-specific logic is called from event handlers
+    post('/api/register');
+    showNotification('Successfully registered!', theme);
+  }  
+
+  // ...
+}
+```
+Now that the code is in an event handler, it’s not reactive—so it will only run when the user submits the form.
+
+**Is your Effect doing several unrelated things?**
+The next question you should ask yourself is whether your Effect is doing several unrelated things.
+
+Imagine you’re creating a shipping form where the user needs to choose their city and area. You fetch the list of cities from the server according to the selected country to show them in a dropdown:
+```tsx
+function ShippingForm({ country }) {
+  const [cities, setCities] = useState(null);
+  const [city, setCity] = useState(null);
+
+  useEffect(() => {
+    let ignore = false;
+    fetch(`/api/cities?country=${country}`)
+      .then(response => response.json())
+      .then(json => {
+        if (!ignore) {
+          setCities(json);
+        }
+      });
+    return () => {
+      ignore = true;
+    };
+  }, [country]); // ✅ All dependencies declared
+```
+This is a good example of fetching data in an Effect. You are synchronizing the cities state with the network according to the country prop. You can’t do this in an event handler because you need to fetch as soon as ShippingForm is displayed and whenever the country changes.
+
+Now let’s say you’re adding a second select box for city areas, which should fetch the areas for the currently selected city. You might start by adding a second fetch call for the list of areas inside the same Effect:
+```tsx
+function ShippingForm({ country }) {
+  const [cities, setCities] = useState(null);
+  const [city, setCity] = useState(null);
+  const [areas, setAreas] = useState(null);
+
+  useEffect(() => {
+    let ignore = false;
+    fetch(`/api/cities?country=${country}`)
+      .then(response => response.json())
+      .then(json => {
+        if (!ignore) {
+          setCities(json);
+        }
+      });
+    // 🔴 Avoid: A single Effect synchronizes two independent processes
+    if (city) {
+      fetch(`/api/areas?city=${city}`)
+        .then(response => response.json())
+        .then(json => {
+          if (!ignore) {
+            setAreas(json);
+          }
+        });
+    }
+    return () => {
+      ignore = true;
+    };
+  }, [country, city]); // ✅ All dependencies declared
+```
+However, since the Effect now uses the city state variable, you’ve had to add city to the list of dependencies. That, in turn, introduced a problem: when the user selects a different city, the Effect will re-run and call fetchCities(country). As a result, you will be unnecessarily refetching the list of cities many times.
+
+**The problem with this code is that you’re synchronizing two different unrelated things.**
+You can improve this code by **extracting repetitive logic into a custom Hook.**
+
+**Do you want to read a value without “reacting” to its changes?**
+Suppose that you want to play a sound when the user receives a new message unless isMuted is true:
+```tsx
+function ChatRoom({ roomId }) {
+  const [messages, setMessages] = useState([]);
+  const [isMuted, setIsMuted] = useState(false);
+
+  useEffect(() => {
+    const connection = createConnection();
+    connection.connect();
+    connection.on('message', (receivedMessage) => {
+      setMessages(msgs => [...msgs, receivedMessage]);
+      if (!isMuted) {
+        playSound();
+      }
+    });
+    // ..
+```
+The problem is that every time isMuted changes (for example, when the user presses the “Muted” toggle), the Effect will re-synchronize, and reconnect to the chat. This is not the desired user experience! (In this example, even disabling the linter would not work—if you do that, isMuted would get “stuck” with its old value.)
+
+To solve this problem, **you need to extract the logic that shouldn’t be reactive out of the Effect.** You don’t want this Effect to “react” to the changes in isMuted. Move this non-reactive piece of logic into an Effect Event:
+```tsx
+import { useState, useEffect, useEffectEvent } from 'react';
+
+function ChatRoom({ roomId }) {
+  const [messages, setMessages] = useState([]);
+  const [isMuted, setIsMuted] = useState(false);
+
+  const onMessage = useEffectEvent(receivedMessage => {
+    setMessages(msgs => [...msgs, receivedMessage]);
+    if (!isMuted) {
+      playSound();
+    }
+  });
+
+  useEffect(() => {
+    const connection = createConnection();
+    connection.connect();
+    connection.on('message', (receivedMessage) => {
+      onMessage(receivedMessage);
+    });
+    return () => connection.disconnect();
+  }, [roomId]); // ✅ All dependencies declared
+  // ...
+```
+- **Effect Events let you split an Effect into reactive parts (which should “react” to reactive values like roomId and their changes) and non-reactive parts (which only read their latest values, like onMessage reads isMuted).** 
+- Now that you read isMuted inside an Effect Event, **it doesn’t need to be a dependency of your Effect.** As a result, the chat won’t re-connect when you toggle the “Muted” setting on and off, solving the original issue!
+
+
+**Move dynamic objects and functions inside your Effect:**
+```tsx
+const serverUrl = 'https://localhost:1234';
+
+function ChatRoom({ roomId }) {
+  const [message, setMessage] = useState('');
+
+  useEffect(() => {
+    const options = {
+      serverUrl: serverUrl,
+      roomId: roomId
+    };
+    const connection = createConnection(options);
+    connection.connect();
+    return () => connection.disconnect();
+  }, [roomId]); // ✅ All dependencies declared
+  // ...
+```
+Now that options is declared inside of your Effect, it is no longer a dependency of your Effect. Instead, the only reactive value used by your Effect is roomId. Since roomId is not an object or function, you can be sure that it won’t be unintentionally different.
+
+
+
+
+
+
+
+
+
+
+
+
+
