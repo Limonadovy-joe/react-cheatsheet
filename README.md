@@ -73,6 +73,7 @@
   - [Lifecycle of Reactive Effects](#lifecycle-of-reactive-effects)
   - [Separating Events from Effects](#separating-events-from-effects)
   - [Removing Effect Dependencies](#removing-effect-dependencies)
+  - [Reusing Logic with Custom Hooks](#reusing-logic-with-custom-hooks)
 - [Anti patterns](#anti-patterns)
   - [Conditional rendering using short circuit operators](#conditional-rendering-using-short-circuit-operators)
 - [Best practises](#best-practises)
@@ -3045,9 +3046,138 @@ function ChatRoom({ roomId }) {
 Now that options is declared inside of your Effect, it is no longer a dependency of your Effect. Instead, the only reactive value used by your Effect is roomId. Since roomId is not an object or function, you can be sure that it won’t be unintentionally different.
 
 
+## Reusing Logic with Custom Hooks
+
+**Custom Hooks: Sharing logic between components:** 
+- Now your components don’t have as much repetitive logic. 
+- More importantly, the **code inside them describes what they want to do (use the online status!) rather than how to do it (by subscribing to the browser events).**
+
+**Should all functions called during rendering start with the use prefix?:**
+No. Functions that don’t call Hooks don’t need to be Hooks.
+
+If your function doesn’t call any Hooks, avoid the use prefix. Instead, write it as a regular function without the use prefix. For example, useSorted below doesn’t call Hooks, so call it getSorted instead:
+```tsx
+// 🔴 Avoid: A Hook that doesn't use Hooks
+function useSorted(items) {
+  return items.slice().sort();
+}
+
+// ✅ Good: A regular function that doesn't use Hooks
+function getSorted(items) {
+  return items.slice().sort();
+}
+```
+This ensures that your code can call this regular function anywhere, including conditions:
+```tsx
+function List({ items, shouldSort }) {
+  let displayedItems = items;
+  if (shouldSort) {
+    // ✅ It's ok to call getSorted() conditionally because it's not a Hook
+    displayedItems = getSorted(items);
+  }
+  // ...
+}
+```
+You should give use prefix to a function (and thus make it a Hook) if it uses at least one Hook inside of it:
+```tsx
+// ✅ Good: A Hook that uses other Hooks
+function useAuth() {
+  return useContext(Auth);
+}
+```
+
+You can extract the repetitive logic into this useFormInput custom Hook:
+```tsx
+mport { useState } from 'react';
+
+export function useFormInput(initialValue) {
+  const [value, setValue] = useState(initialValue);
+
+  function handleChange(e) {
+    setValue(e.target.value);
+  }
+
+  const inputProps = {
+    value: value,
+    onChange: handleChange
+  };
+
+  return inputProps;
+}
+
+function Form() {
+  const firstNameProps = useFormInput('Mary');
+  const lastNameProps = useFormInput('Poppins');
+  // ...
+```
+This is why it works like declaring two separate state variables!
+
+**Custom Hooks let you share stateful logic but not state itself.
+Each call to a Hook is completely independent from every other call to the same Hook.**
 
 
+**Passing reactive values between Hooks:**
+The code inside your custom Hooks will re-run during every re-render of your component. This is why, like components, custom Hooks need to be pure. Think of custom Hooks’ code as part of your component’s body!
 
+**When to use custom Hooks:**
+You don’t need to extract a custom Hook for every little duplicated bit of code. Some duplication is fine. For example, extracting a useFormInput Hook to wrap a single useState call like earlier is probably unnecessary.
+
+
+For example, consider a ShippingForm component that displays two dropdowns: one shows the list of cities, and another shows the list of areas in the selected city. You might start with some code that looks like this:
+```tsx
+function ShippingForm({ country }) {
+  const [cities, setCities] = useState(null);
+  // This Effect fetches cities for a country
+  useEffect(() => {
+    let ignore = false;
+    fetch(`/api/cities?country=${country}`)
+      .then(response => response.json())
+      .then(json => {
+        if (!ignore) {
+          setCities(json);
+        }
+      });
+    return () => {
+      ignore = true;
+    };
+  }, [country]);
+
+  const [city, setCity] = useState(null);
+  const [areas, setAreas] = useState(null);
+  // This Effect fetches areas for the selected city
+  useEffect(() => {
+    if (city) {
+      let ignore = false;
+      fetch(`/api/areas?city=${city}`)
+        .then(response => response.json())
+        .then(json => {
+          if (!ignore) {
+            setAreas(json);
+          }
+        });
+      return () => {
+        ignore = true;
+      };
+    }
+  }, [city]);
+```
+Now you can replace both Effects in the ShippingForm components with calls to useData:
+```tsx
+function ShippingForm({ country }) {
+  const cities = useData(`/api/cities?country=${country}`);
+  const [city, setCity] = useState(null);
+  const areas = useData(city ? `/api/areas?city=${city}` : null);
+  // ...
+```
+- However, whenever you write an Effect, consider whether it would be clearer to also wrap it in a custom Hook.
+- Extracting a custom Hook makes the data flow explicit.
+- By “hiding” your Effect inside useData, you also prevent someone working on the ShippingForm component from adding unnecessary dependencies to it.
+- A good custom Hook makes the calling code more declarative by constraining what it does. For example, useChatRoom(options) can only connect to the chat room, while useImpressionLog(eventName, extraData) can only send an impression log to the analytics.
+-  If your custom Hook API doesn’t constrain the use cases and is very abstract, in the long run it’s likely to introduce more problems than it solves.
+
+- Similar to a design system, you might find it helpful to start extracting common idioms from your app’s components into custom Hooks.
+- **This will keep your components’ code focused on the intent, and let you avoid writing raw Effects very often.** Many excellent custom Hooks are maintained by the React community.
+- Effects let you connect React to external systems. The more coordination between Effects is needed (for example, to chain multiple animations), the more it makes sense to extract that logic out of Effects and Hooks completely like in the sandbox above. 
 
 
 
