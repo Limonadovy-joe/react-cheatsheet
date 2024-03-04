@@ -67,7 +67,8 @@
   - [Scaling Up with Reducer and Context](#scaling-up-with-reducer-and-context)
 - [Escape Hatches](#escape-hatches)
   - [Referencing values with refs](#referencing-values-with-refs)
-    - [Stopwatch using ref](#stopwatch-using-ref) 
+    - [Stopwatch using ref](#stopwatch-using-ref)
+    - [Chat using ref](#chat-using-ref) 
   - [Manipulating the DOM with Refs](#manipulating-the-dom-with-refs)
   - [Synchronizing with Effects](#synchronizing-with-effects)
   - [You Might Not Need an Effect](#you-might-not-need-an-effect)
@@ -1340,6 +1341,113 @@ export const Stopwatch = () => {
 
 ```
 
+### Chat using ref
+```tsx
+import React, { useState, useRef, MutableRefObject } from 'react';
+
+type TimeoutId = ReturnType<typeof setTimeout>;
+
+const setTimeoutPromise = (cb: () => void, delay: number) =>
+  new Promise<TimeoutId>((resolve) => {
+    const timeoutID = setTimeout(() => {
+      cb();
+    }, delay);
+    resolve(timeoutID);
+  });
+
+const setTimeoutIdRef =
+  (ref: MutableRefObject<NodeJS.Timeout | undefined>) => (timeoutId: TimeoutId) => {
+    ref.current = timeoutId;
+  };
+
+export const Chat = () => {
+  const [text, setText] = useState('');
+  const [isSending, setIsSending] = useState(false);
+  const timeoutIdRef = useRef<TimeoutId>();
+
+  const setNotSending = () => setIsSending(false);
+
+  const handleFormSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setIsSending(true);
+
+    const TIMEOUT_DELAY = 3000;
+
+    setTimeoutPromise(() => {
+      alert('sended txt: ' + text);
+      setNotSending();
+    }, TIMEOUT_DELAY).then(setTimeoutIdRef(timeoutIdRef));
+  };
+
+  const handleFormUndo = () => {
+    if (timeoutIdRef.current) clearTimeout(timeoutIdRef.current);
+    setNotSending();
+  };
+
+  return (
+    <form action="" onSubmit={handleFormSubmit}>
+      <input type="text" value={text} onChange={(e) => setText(e.target.value)} />
+      <button type="submit" disabled={isSending}>
+        {isSending ? 'Sending...' : 'Send'}
+      </button>
+      {isSending && <button onClick={handleFormUndo}>Undo</button>}
+    </form>
+  );
+};
+```
+
+### Debouncing using ref
+```tsx
+import React from 'react';
+
+const debounce = (fun: () => void, delay: number) => {
+  let timeoutId: null | number = null;
+
+  return () => {
+    if (timeoutId !== null) clearTimeout(timeoutId);
+    timeoutId = setTimeout(fun, delay) as unknown as number;
+  };
+};
+
+const throttle = (fun: () => void, delay: number) => {
+  let isRunning = false;
+
+  return () => {
+    if (!isRunning) {
+      isRunning = true;
+      setTimeout(() => {
+        isRunning = false;
+        fun();
+      }, delay);
+    }
+  };
+};
+
+type ButtonProps = {
+  onClick: () => void;
+  children: React.ReactNode;
+};
+
+const DebouncedButton = ({ onClick, children }: ButtonProps) => {
+  return <button onClick={() => onClick()}>{children}</button>;
+};
+
+export const Dashboard = () => {
+  const handleFirstButtonClick = debounce(() => alert('Button 1 clicked!'), 500);
+  const handleSecondButtonClick = throttle(() => alert('Button 2 clicked!'), 1000);
+  const handleThirdButtonClick = debounce(() => alert('Button 3 clicked!'), 500);
+
+  return (
+    <>
+      <h3>Dashboard</h3>
+      <DebouncedButton onClick={handleFirstButtonClick}>Button 1</DebouncedButton>
+      <DebouncedButton onClick={handleSecondButtonClick}>Button 2</DebouncedButton>
+      <DebouncedButton onClick={handleThirdButtonClick}>Button 3</DebouncedButton>
+    </>
+  );
+};
+
+```
 
 
 ## Manipulating the DOM with Refs
