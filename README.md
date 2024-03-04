@@ -1251,7 +1251,7 @@ Most of your **application logic and data flow** should not rely on these featur
 - Unlike state, ref is a plain JavaScript object with the current property that you can read and modify.
 - When a piece of information **is used for rendering, keep it in state.** When a piece of information is only needed by event handlers and changing it doesn’t require a re-render, using a ref may be more efficient.
 
-### Stopwatch suing ref
+### Stopwatch using ref
 ```tsx
 import React, { useState, useRef, MutableRefObject } from 'react';
 import * as T from 'fp-ts/Task';
