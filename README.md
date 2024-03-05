@@ -70,6 +70,7 @@
     - [Stopwatch using ref](#stopwatch-using-ref)
     - [Chat using ref](#chat-using-ref) 
   - [Manipulating the DOM with Refs](#manipulating-the-dom-with-refs)
+    - [Managing a list of refs using a ref callback](#managing-a-list-of-refs-using-a-ref-callback) 
   - [Synchronizing with Effects](#synchronizing-with-effects)
   - [You Might Not Need an Effect](#you-might-not-need-an-effect)
   - [Lifecycle of Reactive Effects](#lifecycle-of-reactive-effects)
@@ -1453,84 +1454,143 @@ export const Dashboard = () => {
 ## Manipulating the DOM with Refs
 Sometimes you might need a **access to DOM elemenets managed by React** - for example: to focus a node, scroll to it, or measure its size and position. There is no built-in way to do those things in React,so you will need a **a ref to the DOM node**.
 
-
-**How to manage a list of refs using a ref callback?**
-Sometimes you might need a **ref to each item in the list**, and you don’t know how many you will have. Something like this wouldn’t work:
+### Managing a list of refs using a ref callback
 ```tsx
-<ul>
-  {items.map((item) => {
-    // Doesn't work!
-    const ref = useRef(null);
-    return <li ref={ref} />;
-  })}
-</ul>
-```
-This is because Hooks must only be called at the top-level of your component. You can’t call useRef in a loop, in a condition, or inside a map() call.
+import React, { ComponentPropsWithRef, useRef } from 'react';
 
-**Solution is to pass a function to the ref attribute. This is called a ref callback.** React will call your ref callback with the DOM node when it’s time to set the ref, and with null when it’s time to clear it. This lets you maintain your own array or a Map, and access any ref by its index or some kind of ID.
+type Dimensions = {
+  width: number;
+  height: number;
+};
 
-```tsx
-export default function CatFriends() {
-  const itemsRef = useRef(null);
+type Image = { src: string; dimensions: Dimensions };
+type Images = Array<Image>;
 
-  function scrollToId(itemId) {
-    const map = getMap();
-    const node = map.get(itemId);
-    node.scrollIntoView({
-      behavior: 'smooth',
-      block: 'nearest',
-      inline: 'center'
-    });
-  }
+const createImage = (src: string): Image => {
+  const IMAGE_DIMENSION = 120;
+  return { src, dimensions: { width: IMAGE_DIMENSION, height: IMAGE_DIMENSION } };
+};
 
-  function getMap() {
-    if (!itemsRef.current) {
-      // Initialize the Map on first usage.
-      itemsRef.current = new Map();
-    }
-    return itemsRef.current;
-  }
+const createImageDescription = (identifier: number) => `Image - ${identifier + 1}`;
+
+export const createImages = () =>
+  [
+    'https://placekitten.com/g/200/200',
+    'https://placekitten.com/g/300/200',
+    'https://placekitten.com/g/250/200',
+  ].map(createImage);
+
+const useMap = <K, V>() => {
+  const mapRef = useRef(new Map<K, V>());
+  const map = mapRef.current;
+
+  const set = (key: K, value: V) => map.set(key, value);
+  const get = (key: K) => map.get(key);
+  const remove = (key: K) => map.delete(key);
+
+  return { set, get, remove, size: map.size, map };
+};
+
+type ImageProps = {
+  src: string;
+  description: string;
+  dimensions: Dimensions;
+  onImageRender: (id: string, instance: HTMLImageElement | null) => void;
+} & ComponentPropsWithRef<'img'>;
+
+const Image = (props: ImageProps) => {
+  const {
+    src,
+    description,
+    dimensions: { width, height },
+    onImageRender,
+    ...rest
+  } = props;
 
   return (
-    <>
-      <nav>
-        <button onClick={() => scrollToId(0)}>
-          Tom
-        </button>
-        <button onClick={() => scrollToId(5)}>
-          Maru
-        </button>
-        <button onClick={() => scrollToId(9)}>
-          Jellylorum
-        </button>
-      </nav>
-      <div>
-        <ul>
-          {catList.map(cat => (
-            <li
-              key={cat.id}
-              ref={(node) => {
-                const map = getMap();
-                if (node) {
-                  map.set(cat.id, node);
-                } else {
-                  map.delete(cat.id);
-                }
-              }}
-            >
-              <img
-                src={cat.imageUrl}
-                alt={'Cat #' + cat.id}
-              />
-            </li>
-          ))}
-        </ul>
-      </div>
-    </>
+    <img
+      src={src}
+      alt={description}
+      width={width}
+      height={height}
+      {...rest}
+      ref={(node) => onImageRender(description, node)}
+    />
   );
-}
+};
+
+type ImagesListProps = {
+  images: Images;
+  onImageRender: (id: string, instance: HTMLImageElement | null) => void;
+};
+
+const ImagesList = (props: ImagesListProps) => {
+  const { images, ...rest } = props;
+
+  return (
+    <div>
+      {images.map(({ src, dimensions }, imageNumber) => {
+        const description = createImageDescription(imageNumber);
+        return (
+          <Image key={src} src={src} description={description} dimensions={dimensions} {...rest} />
+        );
+      })}
+    </div>
+  );
+};
+
+type ImageGalleryNavProps = {
+  images: Images;
+  onItemClick: (id: string) => void;
+};
+
+const ImageGalleryNav = (props: ImageGalleryNavProps) => {
+  const { images, onItemClick } = props;
+
+  return (
+    <div>
+      {images.map(({ src }, index) => {
+        const desc = createImageDescription(index);
+        return (
+          <button onClick={() => onItemClick(desc)} key={'button' + src}>
+            {desc}
+          </button>
+        );
+      })}
+    </div>
+  );
+};
+
+type ImageGalleryProps = {
+  images: Images;
+};
+
+export const ImageGallery = (props: ImageGalleryProps) => {
+  const { images } = props;
+
+  const { get, set, remove } = useMap<string, HTMLImageElement>();
+
+  const handleImageRender = (id: string, instance: HTMLImageElement | null) => {
+    instance !== null ? set(id, instance) : remove(id);
+  };
+
+  const handleNavItemClick = (id: string) => {
+    const node = get(id);
+    if (node) node.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+  };
+
+  return (
+    <div>
+      <p>Image Gallery</p>
+      <ImageGalleryNav images={images} onItemClick={handleNavItemClick} />
+      <ImagesList images={images} onImageRender={handleImageRender} />
+    </div>
+  );
+};
+
 ```
-In this example, itemsRef doesn’t hold a single DOM node. Instead, it holds a Map from item ID to a DOM node. (Refs can hold any values!).** The ref callback on every list item takes care to update the Map.**
+
+
 
 
 **Accessing another component’s DOM nodes**</br>
