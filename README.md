@@ -70,7 +70,8 @@
     - [Stopwatch using ref](#stopwatch-using-ref)
     - [Chat using ref](#chat-using-ref) 
   - [Manipulating the DOM with Refs](#manipulating-the-dom-with-refs)
-    - [Managing a list of refs using a ref callback](#managing-a-list-of-refs-using-a-ref-callback) 
+    - [Managing a list of refs using a ref callback](#managing-a-list-of-refs-using-a-ref-callback)
+    - [Ref forwarding](#ref-forwarding) 
   - [Synchronizing with Effects](#synchronizing-with-effects)
   - [You Might Not Need an Effect](#you-might-not-need-an-effect)
   - [Lifecycle of Reactive Effects](#lifecycle-of-reactive-effects)
@@ -1589,202 +1590,18 @@ export const ImageGallery = (props: ImageGalleryProps) => {
 };
 
 ```
+### Ref forwarding
+- **React does not let a component access the DOM nodes of other components**. Not even for its own children! This is intentional. Refs are an escape hatch that should be used sparingly. Manually manipulating another component’s DOM nodes makes your code even more fragile.
+- Instead, components that want to expose their DOM nodes have to opt in to that behavior. A component can specify that it “forwards” its ref to one of its children
+
+- In design systems, **it is a common pattern for low-level components like buttons, inputs, and so on, to forward their refs to their DOM nodes.**
+- On the other hand, **high-level components like forms, lists, or page sections usually won’t expose their DOM nodes to avoid accidental dependencies on the DOM structure.**
 
 
 
 
-**Accessing another component’s DOM nodes**</br>
-**When you put a ref on a built-in component that outputs a browser element like input**, React will set that ref’s current property to the corresponding DOM node (such as the actual <input /> in the browser).
 
-However, if you try to put a ref on your own component, like MyInput, by default you will get null.
-**This happens because by default React does not let a component access the DOM nodes of other components.** Not even for its own children! This is intentional. Refs are an escape hatch that should be used sparingly. Manually manipulating another component’s DOM nodes makes your code even more fragile.
 
-**Instead, components that want to expose their DOM nodes have to opt in to that behavior**. A component can specify that it “forwards” its ref to one of its children. Here’s how MyInput can use the forwardRef API:
-
-```tsx
-const MyInput = forwardRef((props, ref) => {
-  return <input {...props} ref={ref} />;
-});
-```
-In design systems, **it is a common pattern for low-level components like buttons, inputs, and so on, to forward their refs to their DOM nodes.** On the other hand, high-level components like forms, lists, or page sections usually won’t expose their DOM nodes to avoid accidental dependencies on the DOM structure.
-
-**Exposing a subset of the API with an imperative handle:**
-In the above example, MyInput exposes the original DOM input element. This lets the parent component call focus() on it. However, this also lets the parent component do something else—for example, change its CSS styles. In uncommon cases, you may want to restrict the exposed functionality. You can do that with useImperativeHandle:
-```tsx
-import {
-  forwardRef, 
-  useRef, 
-  useImperativeHandle
-} from 'react';
-
-const MyInput = forwardRef((props, ref) => {
-  const realInputRef = useRef(null);
-  useImperativeHandle(ref, () => ({
-    // Only expose focus and nothing else
-    focus() {
-      realInputRef.current.focus();
-    },
-  }));
-  return <input {...props} ref={realInputRef} />;
-});
-
-export default function Form() {
-  const inputRef = useRef(null);
-
-  function handleClick() {
-    inputRef.current.focus();
-  }
-
-  return (
-    <>
-      <MyInput ref={inputRef} />
-      <button onClick={handleClick}>
-        Focus the input
-      </button>
-    </>
-  );
-}
-```
-Here, realInputRef inside MyInput holds the actual input DOM node. However, **useImperativeHandle instructs React to provide your own special object as the value of a ref to the parent component.** **So inputRef.current inside the Form component will only have the focus method**. In this case, the ref “handle” is not the DOM node, but the custom object you create inside useImperativeHandle call.
-
-**When React attaches the refs:**
-In React, **every update is split in two phases:**
-1. During **render**, React calls your components to figure out what should be on the screen.
-2. During **commit**, React applies changes to the DOM.
-
-In general, you don’t want to access refs during rendering. That goes for refs holding DOM nodes as well. During the first render, the DOM nodes have not yet been created, so ref.current will be null. And during the rendering of updates, the DOM nodes haven’t been updated yet. So it’s too early to read them.
-
-React sets ref.current during the commit. Before updating the DOM, React sets the affected ref.current values to null. After updating the DOM, React immediately sets them to the corresponding DOM nodes.
-
-**Usually, you will access refs from event handlers.** If you want to do something with a ref, **but there is no particular event to do it in, you might need an Effect. We will discuss effects on the next pages.**
-
-**Flushing state updates synchronously with flushSync:**
-Consider code like this, which adds a new todo and scrolls the screen down to the last child of the list. Notice how, for some reason, it always scrolls to the todo that was just before the last added one:
-
-```tsx
-import { useState, useRef } from 'react';
-
-export default function TodoList() {
-  const listRef = useRef(null);
-  const [text, setText] = useState('');
-  const [todos, setTodos] = useState(
-    initialTodos
-  );
-
-  function handleAdd() {
-    const newTodo = { id: nextId++, text: text };
-    setText('');
-    setTodos([ ...todos, newTodo]);
-    listRef.current.lastChild.scrollIntoView({
-      behavior: 'smooth',
-      block: 'nearest'
-    });
-  }
-
-  return (
-    <>
-      <button onClick={handleAdd}>
-        Add
-      </button>
-      <input
-        value={text}
-        onChange={e => setText(e.target.value)}
-      />
-      <ul ref={listRef}>
-        {todos.map(todo => (
-          <li key={todo.id}>{todo.text}</li>
-        ))}
-      </ul>
-    </>
-  );
-}
-```
-
-The issue is with these two lines:
-```tsx
-setTodos([ ...todos, newTodo]);
-listRef.current.lastChild.scrollIntoView();
-```
-**In React, state updates are queued.** Usually, this is what you want. However, **here it causes a problem because setTodos does not immediately update the DOM.** So the time you scroll the list to its last element, the todo has not yet been added. This is why scrolling always “lags behind” by one item.
-
-To fix this issue, **you can force React to update (“flush”) the DOM synchronously.**
-```tsx
-flushSync(() => {
-  setTodos([ ...todos, newTodo]);
-});
-listRef.current.lastChild.scrollIntoView();
-```
-
-**Best practices for DOM manipulation with refs:**
-Refs are an escape hatch. You should only use them when you have to “step outside React”. Common examples of this include managing focus, scroll position, or calling browser APIs that React does not expose.
-
-Avoid changing DOM nodes managed by React. Modifying, adding children to, or removing children from elements that are managed by React can lead to inconsistent visual results or crashes like above.
-
-However, this doesn’t mean that you can’t do it at all. It requires caution. **You can safely modify parts of the DOM that React has no reason to update.** For example, if some div is always empty in the JSX, React won’t have a reason to touch its children list. Therefore, it is safe to manually add or remove elements there.
-
-**Challenge:**
-This image carousel has a “Next” button that switches the active image. Make the gallery scroll horizontally to the active image on click. You will want to call scrollIntoView() on the DOM node of the active image..
-
-You can declare a selectedRef, and then pass it conditionally only to the current image:
-```tsx
-<li ref={index === i ? selectedRef : null}>
-```
-When index === i, meaning that the image is the selected one, the li will receive the selectedRef. React will make sure that selectedRef.current always points at the correct DOM node.
-
-Note that the flushSync call is necessary to force React to update the DOM before the scroll. Otherwise, selectedRef.current would always point at the previously selected item.
-
-```tsx
-export default function CatFriends() {
-  const selectedRef = useRef(null);
-  const [index, setIndex] = useState(0);
-
-  return (
-    <>
-      <nav>
-        <button onClick={() => {
-          flushSync(() => {
-            if (index < catList.length - 1) {
-              setIndex(index + 1);
-            } else {
-              setIndex(0);
-            }
-          });
-          selectedRef.current.scrollIntoView({
-            behavior: 'smooth',
-            block: 'nearest',
-            inline: 'center'
-          });            
-        }}>
-          Next
-        </button>
-      </nav>
-      <div>
-        <ul>
-          {catList.map((cat, i) => (
-            <li
-              key={cat.id}
-              ref={index === i ?
-                selectedRef :
-                null
-              }
-            >
-              <img
-                className={
-                  index === i ?
-                    'active'
-                    : ''
-                }
-                src={cat.imageUrl}
-                alt={'Cat #' + cat.id}
-              />
-            </li>
-          ))}
-        </ul>
-      </div>
-    </>
-  );
-}
-```
 
 ## Synchronizing with Effects
 Some components need to synchronize with **external systems.**  For example, you might want to control a **non-React component based on the React state**, set up a **server connection**, or **send an analytics log when a component appears on the screen.**
