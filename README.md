@@ -1597,6 +1597,52 @@ export const ImageGallery = (props: ImageGalleryProps) => {
 - In design systems, **it is a common pattern for low-level components like buttons, inputs, and so on, to forward their refs to their DOM nodes.**
 - On the other hand, **high-level components like forms, lists, or page sections usually won’t expose their DOM nodes to avoid accidental dependencies on the DOM structure.**
 
+```tsx
+import React, {
+  forwardRef,
+  ComponentPropsWithRef,
+  ComponentPropsWithoutRef,
+  ReactNode,
+  useRef,
+} from 'react';
+
+type ButtonProps = {
+  children: ReactNode;
+  onClick: (() => void) | ((e: React.MouseEvent<HTMLButtonElement, MouseEvent>) => void);
+} & ComponentPropsWithoutRef<'button'>;
+
+const Button = ({ children, onClick }: ButtonProps) => (
+  <button onClick={onClick}>{children}</button>
+);
+
+type InputProps = {
+  labelText: string;
+} & ComponentPropsWithRef<'input'>;
+
+const Input = forwardRef<HTMLInputElement, InputProps>(({ labelText, value, ...rest }, ref) => (
+  <label>
+    {labelText}
+    <input type="text" ref={ref} value={value} {...rest} />
+  </label>
+));
+
+Input.displayName = 'Input';
+
+export const Form = () => {
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const handleButtonClick = () => {
+    if (inputRef.current !== null) inputRef.current.focus();
+  };
+
+  return (
+    <form action="" onSubmit={(e) => e.preventDefault()}>
+      <Input labelText="Name:" ref={inputRef} />
+      <Button onClick={handleButtonClick}>{'Focus input'}</Button>
+    </form>
+  );
+};
+```
 
 
 
