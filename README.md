@@ -71,7 +71,11 @@
     - [Chat using ref](#chat-using-ref) 
   - [Manipulating the DOM with Refs](#manipulating-the-dom-with-refs)
     - [Managing a list of refs using a ref callback](#managing-a-list-of-refs-using-a-ref-callback)
-    - [Ref forwarding](#ref-forwarding) 
+    - [Ref forwarding](#ref-forwarding)
+    - [Exposing a subset of the API with an imperative handle](#exposing-a-subset-of-the-api-with-an-imperative-handle)
+    - [VideoPlayer](#videoPlayer)
+    - [Scrolling an image carousel](#scrolling-an-image-carousel)
+    - [Flushing state updates synchronously with flushSync](#flushing-state-updates-synchronously-with-flushSync)
   - [Synchronizing with Effects](#synchronizing-with-effects)
   - [You Might Not Need an Effect](#you-might-not-need-an-effect)
   - [Lifecycle of Reactive Effects](#lifecycle-of-reactive-effects)
@@ -1644,6 +1648,122 @@ export const Form = () => {
 };
 ```
 
+### Exposing a subset of the API with an imperative handle
+```tsx
+import React, {
+  forwardRef,
+  ComponentPropsWithRef,
+  ComponentPropsWithoutRef,
+  ReactNode,
+  useRef,
+  useImperativeHandle,
+} from 'react';
+
+type ButtonProps = {
+  children: ReactNode;
+  onClick: (() => void) | ((e: React.MouseEvent<HTMLButtonElement, MouseEvent>) => void);
+} & ComponentPropsWithoutRef<'button'>;
+
+const Button = ({ children, onClick }: ButtonProps) => (
+  <button onClick={onClick}>{children}</button>
+);
+
+type InputProps = {
+  labelText: string;
+} & ComponentPropsWithRef<'input'>;
+
+type InputEvents = {
+  focus: () => void;
+};
+
+const Input = forwardRef<InputEvents, InputProps>(({ labelText, value, ...rest }, ref) => {
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useImperativeHandle(ref, () => ({
+    focus: () => {
+      if (inputRef.current !== null) inputRef.current.focus();
+    },
+  }));
+  return (
+    <label>
+      {labelText}
+      <input type="text" ref={inputRef} value={value} {...rest} />
+    </label>
+  );
+});
+
+Input.displayName = 'Input';
+
+export const Form = () => {
+  const inputRef = useRef<InputEvents>(null);
+
+  const handleButtonClick = () => {
+    if (inputRef.current !== null) inputRef.current.focus();
+  };
+
+  return (
+    <form action="" onSubmit={(e) => e.preventDefault()}>
+      <Input labelText="Name:" ref={inputRef} />
+      <Button onClick={handleButtonClick}>{'Focus input'}</Button>
+    </form>
+  );
+};
+```
+
+### VideoPlayer
+```tsx
+/* eslint-disable jsx-a11y/media-has-caption */
+import React, { useRef, useState } from 'react';
+
+type EventTypes = Extract<'play' | 'pause', keyof HTMLVideoElement>;
+
+const VideoPlayer = () => {
+  const [isPlaying, setIsPlaying] = useState(false);
+  const videoRef = useRef<HTMLVideoElement>(null);
+
+  const handleClick = () => {
+    const eventType: EventTypes = isPlaying ? 'pause' : 'play';
+    playPauseVideo(eventType)();
+  };
+
+  const playPauseVideo = (eventType: EventTypes) => () => {
+    if (videoRef.current !== null) {
+      videoRef.current[eventType]();
+      const isPlayingNext = eventType === 'play';
+      setIsPlaying(isPlayingNext);
+    }
+  };
+
+  return (
+    <div>
+      <video
+        ref={videoRef}
+        width="250"
+        onPlay={playPauseVideo('play')}
+        onPause={playPauseVideo('pause')}
+      >
+        <source
+          src="https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4"
+          type="video/mp4"
+        />
+        <p>Your browser doesn&apos;t support HTML video. Here is a instead.</p>
+      </video>
+      <button onClick={handleClick}>{isPlaying ? 'Pause' : 'Play'}</button>
+    </div>
+  );
+};
+
+export const Form = () => {
+  return (
+    <form action="" onSubmit={(e) => e.preventDefault()}>
+      <VideoPlayer />
+    </form>
+  );
+};
+
+```
+
+### Scrolling an image carousel
 
 
 
