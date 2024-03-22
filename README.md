@@ -86,6 +86,8 @@
   - [Conditional rendering using short circuit operators](#conditional-rendering-using-short-circuit-operators)
 - [Best practises](#best-practises)
   - [Organize helper functions](#organize-helper-functions)
+- [Code splitting](#code-splitting)
+  - [Typed React lazy](#typed-react-lazy) 
 
 ## Fundamentals
 React is a library. It lets you put components together but it **does not prescribe how to do routing and data fetching**. To build an entire React app you should use a full-stack React framework like Next.js or Remix.
@@ -2030,92 +2032,6 @@ const UserList = ({ users }: UserListProps) => {
 
 
 ```
-## Best practises
-### Organize helper functions
-Helper functions that **dont need to hold a closure over the components should be moved outside**. So ideal place is before the component definition so the file can be readable from top to bottom.
-
-That also reduces the noise in the component and leaves inside only those things that need to be there.
-
-```tsx
-// 👎 Avoid nesting functions which don't need to hold a closure.
-function Component({ date }) {
-  function parseDate(rawDate) {
-    ...
-  }
-
-  return <div>Date is {parseDate(date)}</div>
-}
-
-
-function parseDate(date) {
-  ...
-}
-
-// 👍 Place the helper functions after or before the component
-function Component({ date }) {
-  return <div>Date is {parseDate(date)}</div>
-}
-```
-You want to keep the least number of helper functions inside the definition. **Move as many as possible and pass the values from state as arguments**.
-
-Composing your logic out of pure functions that rely only on inputs makes it easier to track bugs and extends.
-```tsx
-// 👎 Helper functions shouldn't read from the component's state
-export default function Component() {
-  const [value, setValue] = useState('')
-
-  function isValid() {
-    // ...
-  }
-
-  return (
-    <>
-      <input
-        value={value}
-        onChange={e => setValue(e.target.value)}
-        onBlur={validateInput}
-      />
-      <button
-        onClick={() => {
-          if (isValid() {
-            // ...
-          }
-        }}
-      >
-        Submit
-      </button>
-    </>
-  )
-}
-
-// 👍 Extract them and pass only the values they need
-export default function Component() {
-  const [value, setValue] = useState('')
-
-  return (
-    <>
-      <input
-        value={value}
-        onChange={e => setValue(e.target.value)}
-        onBlur={validateInput}
-      />
-      <button
-        onClick={() => {
-          if (isValid(value)) {
-            // ...
-          }
-        }}
-      >
-        Submit
-      </button>
-    </>
-  )
-}
-
-function isValid(value) {
-  // ...
-}
-```
 
 ## You Might Not Need an Effect
 Effects are an **escape hatch** from the React paradigm. They let you “step outside” of React and synchronize your components with some external system like a non-React widget, network, or the browser DOM. Removing unnecessary Effects will make your code easier to follow, faster to run, and less error-prone.  
@@ -3349,6 +3265,157 @@ function ShippingForm({ country }) {
 - **This will keep your components’ code focused on the intent, and let you avoid writing raw Effects very often.** Many excellent custom Hooks are maintained by the React community.
 - Effects let you connect React to external systems. The more coordination between Effects is needed (for example, to chain multiple animations), the more it makes sense to extract that logic out of Effects and Hooks completely like in the sandbox above. 
 
+## Best practises
+### Organize helper functions
+Helper functions that **dont need to hold a closure over the components should be moved outside**. So ideal place is before the component definition so the file can be readable from top to bottom.
+
+That also reduces the noise in the component and leaves inside only those things that need to be there.
+
+```tsx
+// 👎 Avoid nesting functions which don't need to hold a closure.
+function Component({ date }) {
+  function parseDate(rawDate) {
+    ...
+  }
+
+  return <div>Date is {parseDate(date)}</div>
+}
+
+
+function parseDate(date) {
+  ...
+}
+
+// 👍 Place the helper functions after or before the component
+function Component({ date }) {
+  return <div>Date is {parseDate(date)}</div>
+}
+```
+You want to keep the least number of helper functions inside the definition. **Move as many as possible and pass the values from state as arguments**.
+
+Composing your logic out of pure functions that rely only on inputs makes it easier to track bugs and extends.
+```tsx
+// 👎 Helper functions shouldn't read from the component's state
+export default function Component() {
+  const [value, setValue] = useState('')
+
+  function isValid() {
+    // ...
+  }
+
+  return (
+    <>
+      <input
+        value={value}
+        onChange={e => setValue(e.target.value)}
+        onBlur={validateInput}
+      />
+      <button
+        onClick={() => {
+          if (isValid() {
+            // ...
+          }
+        }}
+      >
+        Submit
+      </button>
+    </>
+  )
+}
+
+// 👍 Extract them and pass only the values they need
+export default function Component() {
+  const [value, setValue] = useState('')
+
+  return (
+    <>
+      <input
+        value={value}
+        onChange={e => setValue(e.target.value)}
+        onBlur={validateInput}
+      />
+      <button
+        onClick={() => {
+          if (isValid(value)) {
+            // ...
+          }
+        }}
+      >
+        Submit
+      </button>
+    </>
+  )
+}
+
+function isValid(value) {
+  // ...
+}
+```
+
+## Code splitting
+- **Each chunk is a dynamic import() in our app.** We have three since we're using React.lazy three times, with Home, Topics, and Settings.
+- Instead of thinking about code splitting as splitting your app up by its routes,**you should think of it as splitting your app up by its components (Routes are just components, after all).** If you have a rich text editor that lives in a modal, splitting by the route only will still load the editor even if the modal is never opened.
+- Variants: **Route-based splitting**, **Component-base splitting**
+### Typed React lazy
+```tsx
+// named imports for React.lazy: https://github.com/facebook/react/issues/14603#issuecomment-726551598
+export function lazyImport<
+  T extends React.ComponentType<any>,
+  I extends { [K2 in K]: T },
+  K extends keyof I
+>(factory: () => Promise<I>, name: K): I {
+  return Object.create({
+    [name]: React.lazy(() => factory().then((module) => ({ default: module[name] }))),
+  });
+}
+```
+Usage:
+```tsx
+import { Suspense } from 'react';
+import { Navigate, Outlet } from 'react-router-dom';
+
+import { Spinner } from '@/components/Elements';
+import { MainLayout } from '@/components/Layout';
+import { lazyImport } from '@/utils/lazyImport';
+
+const { DiscussionsRoutes } = lazyImport(
+  () => import('@/features/discussions'),
+  'DiscussionsRoutes'
+);
+const { Dashboard } = lazyImport(() => import('@/features/misc'), 'Dashboard');
+const { Profile } = lazyImport(() => import('@/features/users'), 'Profile');
+const { Users } = lazyImport(() => import('@/features/users'), 'Users');
+
+const App = () => {
+  return (
+    <MainLayout>
+      <Suspense
+        fallback={
+          <div className="h-full w-full flex items-center justify-center">
+            <Spinner size="xl" />
+          </div>
+        }
+      >
+        <Outlet />
+      </Suspense>
+    </MainLayout>
+  );
+};
+
+export const protectedRoutes = [
+  {
+    path: '/app',
+    element: <App />,
+    children: [
+      { path: '/discussions/*', element: <DiscussionsRoutes /> },
+      { path: '/users', element: <Users /> },
+      { path: '/profile', element: <Profile /> },
+      { path: '/', element: <Dashboard /> },
+      { path: '*', element: <Navigate to="." /> },
+    ],
+  },
+];
+```
 
 
 
