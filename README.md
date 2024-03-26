@@ -87,7 +87,10 @@
 - [Best practises](#best-practises)
   - [Organize helper functions](#organize-helper-functions)
 - [Code splitting](#code-splitting)
-  - [Typed React lazy](#typed-react-lazy) 
+  - [Typed React lazy](#typed-react-lazy)
+- [Router](#router)
+  - [Protected routes](#protected-routes)
+  - [Remember Route for Redirect](#remember-route-for-redirect)
 
 ## Fundamentals
 React is a library. It lets you put components together but it **does not prescribe how to do routing and data fetching**. To build an entire React app you should use a full-stack React framework like Next.js or Remix.
@@ -3415,6 +3418,78 @@ export const protectedRoutes = [
     ],
   },
 ];
+```
+
+## Router
+### Protected routes
+Using **`RequireAuth`** component:
+```tsx
+function RequireAuth({ children }) {
+  const { authed } = useAuth();
+
+  return authed === true
+    ? children
+    : <Navigate to="/login" replace />;
+}
+
+<Routes>
+  <Route path="/" element={<Home />} />
+  <Route path="/pricing" element={<Pricing />} />
+  <Route
+    path="/dashboard"
+    element={
+      <RequireAuth>
+        <Dashboard />
+      </RequireAuth>
+    }
+  />
+  <Route
+    path="/settings"
+    element={
+      <RequireAuth>
+        <Settings />
+      </RequireAuth>
+    }
+  />
+  <Route path="/login" element={<Login />} />
+</Routes>
+```
+
+### Remember Route for Redirect
+- If you open an application at a protected route, but you are not logged in, you get a redirect to the Login page. After the login, you will get a redirect to the desired protected route
+- should redirect them to the route they were originally trying to visit
+```tsx
+function RequireAuth({ children }) {
+  const { authed } = useAuth();
+  const location = useLocation();
+
+  return authed === true
+    ? children
+    : <Navigate
+        to="/login"
+        replace
+        state={{ path: location.pathname }}
+      />;
+}
+
+const Login = () => {
+  const navigate = useNavigate();
+  const { login } = useAuth();
+  const { state } = useLocation();
+
+  const handleLogin = () => {
+    login().then(() => {
+      navigate(state?.path || "/dashboard");
+    });
+  };
+
+  return (
+    <div>
+      <h1>Login</h1>
+      <button onClick={handleLogin}>Log in</button>
+    </div>
+  );
+};
 ```
 
 
